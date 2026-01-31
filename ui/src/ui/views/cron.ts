@@ -383,7 +383,19 @@ function renderJob(job: CronJob, props: CronProps) {
   const isSelected = props.runsJobId === job.id;
   const itemClass = `list-item list-item-clickable${isSelected ? " list-item-selected" : ""}`;
   return html`
-    <div class=${itemClass} @click=${() => props.onLoadRuns(job.id)}>
+    <div
+      class=${itemClass}
+      role="button"
+      tabindex="0"
+      aria-pressed=${isSelected}
+      @click=${() => props.onLoadRuns(job.id)}
+      @keydown=${(event: KeyboardEvent) => {
+        if (event.defaultPrevented) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        props.onLoadRuns(job.id);
+      }}
+    >
       <div class="list-main">
         <div class="list-title">${job.name}</div>
         <div class="list-sub">${formatCronSchedule(job)}</div>

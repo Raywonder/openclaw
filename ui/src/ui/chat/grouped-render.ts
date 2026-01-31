@@ -73,15 +73,22 @@ export function renderStreamingGroup(
   startedAt: number,
   onOpenSidebar?: (content: string) => void,
   assistant?: AssistantIdentity,
+  announce = false,
 ) {
   const timestamp = new Date(startedAt).toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
   });
   const name = assistant?.name ?? "Assistant";
+  const headingId = `chat-stream-${startedAt}`;
 
   return html`
-    <div class="chat-group assistant">
+    <article
+      class="chat-group assistant"
+      aria-labelledby=${headingId}
+      aria-live=${announce ? "polite" : "off"}
+      aria-atomic=${announce ? "true" : "false"}
+    >
       ${renderAvatar("assistant", assistant)}
       <div class="chat-group-messages">
         ${renderGroupedMessage(
@@ -93,12 +100,12 @@ export function renderStreamingGroup(
           { isStreaming: true, showReasoning: false },
           onOpenSidebar,
         )}
-        <div class="chat-group-footer">
+        <h2 id=${headingId} class="chat-group-footer">
           <span class="chat-sender-name">${name}</span>
           <span class="chat-group-timestamp">${timestamp}</span>
-        </div>
+        </h2>
       </div>
-    </div>
+    </article>
   `;
 }
 
@@ -109,6 +116,7 @@ export function renderMessageGroup(
     showReasoning: boolean;
     assistantName?: string;
     assistantAvatar?: string | null;
+    announce?: boolean;
   },
 ) {
   const normalizedRole = normalizeRoleForGrouping(group.role);
@@ -125,9 +133,16 @@ export function renderMessageGroup(
     hour: "numeric",
     minute: "2-digit",
   });
+  const headingId = `chat-group-${group.key}`;
+  const announce = opts.announce ?? false;
 
   return html`
-    <div class="chat-group ${roleClass}">
+    <article
+      class="chat-group ${roleClass}"
+      aria-labelledby=${headingId}
+      aria-live=${announce ? "polite" : "off"}
+      aria-atomic=${announce ? "true" : "false"}
+    >
       ${renderAvatar(group.role, {
         name: assistantName,
         avatar: opts.assistantAvatar ?? null,
@@ -143,12 +158,12 @@ export function renderMessageGroup(
             opts.onOpenSidebar,
           ),
         )}
-        <div class="chat-group-footer">
+        <h2 id=${headingId} class="chat-group-footer">
           <span class="chat-sender-name">${who}</span>
           <span class="chat-group-timestamp">${timestamp}</span>
-        </div>
+        </h2>
       </div>
-    </div>
+    </article>
   `;
 }
 
@@ -200,12 +215,14 @@ function renderMessageImages(images: ImageBlock[]) {
     <div class="chat-message-images">
       ${images.map(
         (img) => html`
-          <img
-            src=${img.url}
-            alt=${img.alt ?? "Attached image"}
+          <button
+            type="button"
             class="chat-message-image"
             @click=${() => window.open(img.url, "_blank")}
-          />
+          >
+            <img src=${img.url} alt=${img.alt ?? "Attached image"} />
+            <span class="sr-only">Open image in new tab</span>
+          </button>
         `,
       )}
     </div>

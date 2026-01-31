@@ -39,7 +39,13 @@
   display: flex;
   gap: 8px;
   align-items: baseline;
-  margin-top: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 1em;
+  font-weight: inherit;
+  line-height: 1.2;
+  border: 0;
+  background: none;
 }
 
 .chat-sender-name {

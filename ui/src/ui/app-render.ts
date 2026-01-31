@@ -114,6 +114,7 @@ export function renderApp(state: AppViewState) {
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
   const chatAvatarUrl = state.chatAvatarUrl ?? assistantAvatarUrl ?? null;
+  const pageSubtitle = subtitleForTab(state.tab);
 
   return html`
     <div class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
@@ -195,11 +196,11 @@ export function renderApp(state: AppViewState) {
           </div>
         </div>
       </aside>
-      <main class="content ${isChat ? "content--chat" : ""}">
+      <main id="main-content" class="content ${isChat ? "content--chat" : ""}" tabindex="-1">
         <section class="content-header">
           <div>
-            <div class="page-title">${titleForTab(state.tab)}</div>
-            <div class="page-sub">${subtitleForTab(state.tab)}</div>
+            <h1 class="page-title">${titleForTab(state.tab)}</h1>
+            ${pageSubtitle ? html`<p class="page-sub">${pageSubtitle}</p>` : nothing}
           </div>
           <div class="page-meta">
             ${state.lastError ? html`<div class="pill danger">${state.lastError}</div>` : nothing}
@@ -478,6 +479,7 @@ export function renderApp(state: AppViewState) {
                 queue: state.chatQueue,
                 connected: state.connected,
                 canSend: state.connected,
+                announceMessages: state.settings.chatAnnouncements ?? true,
                 disabledReason: chatDisabledReason,
                 error: state.lastError,
                 sessions: state.sessionsResult,

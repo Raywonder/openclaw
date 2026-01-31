@@ -38,6 +38,7 @@ export type ChatProps = {
   queue: ChatQueueItem[];
   connected: boolean;
   canSend: boolean;
+  announceMessages: boolean;
   disabledReason: string | null;
   error: string | null;
   sessions: SessionsListResult | null;
@@ -183,6 +184,7 @@ export function renderChat(props: ChatProps) {
     name: props.assistantName,
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
   };
+  const announcementsOn = props.announceMessages;
 
   const hasAttachments = (props.attachments?.length ?? 0) > 0;
   const composePlaceholder = props.connected
@@ -197,7 +199,8 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="polite"
+      aria-live="off"
+      aria-relevant="additions"
       @scroll=${props.onChatScroll}
     >
       ${
@@ -221,15 +224,19 @@ export function renderChat(props: ChatProps) {
               item.startedAt,
               props.onOpenSidebar,
               assistantIdentity,
+              false,
             );
           }
 
           if (item.kind === "group") {
+            const announceGroup =
+              announcementsOn && normalizeRoleForGrouping(item.role) !== "user";
             return renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
+              announce: announceGroup,
             });
           }
 

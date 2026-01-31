@@ -50,6 +50,7 @@ export function renderChatControls(state: AppViewState) {
   const disableFocusToggle = state.onboarding;
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const focusActive = state.onboarding ? true : state.settings.chatFocusMode;
+  const speakAnnouncements = state.settings.chatAnnouncements ?? true;
   // Refresh icon
   const refreshIcon = html`
     <svg
@@ -87,6 +88,7 @@ export function renderChatControls(state: AppViewState) {
   return html`
     <div class="chat-controls">
       <label class="field chat-controls__session">
+        <span class="sr-only">Chat session</span>
         <select
           .value=${state.sessionKey}
           ?disabled=${!state.connected}
@@ -127,6 +129,7 @@ export function renderChatControls(state: AppViewState) {
           void refreshChat(state as unknown as Parameters<typeof refreshChat>[0]);
         }}
         title="Refresh chat data"
+        aria-label="Refresh chat data"
       >
         ${refreshIcon}
       </button>
@@ -142,6 +145,7 @@ export function renderChatControls(state: AppViewState) {
           });
         }}
         aria-pressed=${showThinking}
+        aria-label="Toggle assistant thinking output"
         title=${
           disableThinkingToggle
             ? "Disabled during onboarding"
@@ -149,6 +153,20 @@ export function renderChatControls(state: AppViewState) {
         }
       >
         ${icons.brain}
+      </button>
+      <button
+        class="btn sr-only"
+        type="button"
+        aria-pressed=${speakAnnouncements}
+        aria-label="Speak new replies"
+        @click=${() => {
+          state.applySettings({
+            ...state.settings,
+            chatAnnouncements: !state.settings.chatAnnouncements,
+          });
+        }}
+      >
+        ${speakAnnouncements ? "Disable spoken replies" : "Enable spoken replies"}
       </button>
       <button
         class="btn btn--sm btn--icon ${focusActive ? "active" : ""}"
@@ -161,6 +179,7 @@ export function renderChatControls(state: AppViewState) {
           });
         }}
         aria-pressed=${focusActive}
+        aria-label="Toggle focus mode"
         title=${
           disableFocusToggle
             ? "Disabled during onboarding"
