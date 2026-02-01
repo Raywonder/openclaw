@@ -184,7 +184,6 @@ export function renderChat(props: ChatProps) {
     name: props.assistantName,
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
   };
-  const announcementsOn = props.announceMessages;
   let toolProgressKey = 0;
   let pendingTool = false;
   if (props.showThinking) {
@@ -220,12 +219,30 @@ export function renderChat(props: ChatProps) {
   const waitingTickSource =
     waitingTarget === "tool" ? toolProgressKey + (props.toolMessages?.length ?? 0) : streamText.length;
   const waitingEllipsisCount = waitingForReply ? ((waitingTickSource % 3) + 1) : 0;
-  const waitingStatusText = waitingTarget
-    ? `${waitingTarget === "tool" ? "Wait tool" : "Wait reply"}${".".repeat(waitingEllipsisCount)}`
-    : null;
-  const waitingStatus = waitingStatusText
-    ? html`<div class="sr-only chat-status-announcement" role="status" aria-live="polite" aria-atomic="true">
-        ${waitingStatusText}
+  const latestAssistant = extractLatestAssistantSummary(props.messages);
+  let statusText: string | null = null;
+  if (props.announceMessages) {
+    if (props.loading) {
+      statusText = "Loading chat…";
+    } else if (waitingTarget === "tool") {
+      statusText = `Wait tool${".".repeat(waitingEllipsisCount)}`;
+    } else if (waitingTarget === "assistant") {
+      statusText = latestAssistant?.hasReasoning ? "Think…" : `Wait reply${".".repeat(waitingEllipsisCount)}`;
+    } else if (latestAssistant) {
+      if (latestAssistant.text) {
+        let summary = latestAssistant.text;
+        if (summary.length > 180) summary = `${summary.slice(0, 177)}…`;
+        statusText = `Ans: ${summary}`;
+      } else if (latestAssistant.hasToolResult) {
+        statusText = "Tool done.";
+      } else {
+        statusText = "Reply ready.";
+      }
+    }
+  }
+  const statusAnnouncement = statusText
+    ? html`<div class="chat-status-announcement sr-only" role="status" aria-live="polite" aria-atomic="true">
+        ${statusText}
       </div>`
     : nothing;
 
@@ -242,12 +259,11 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="polite"
+      aria-live="off"
       aria-relevant="additions"
       aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
     >
-      ${waitingStatus}
       ${
         props.loading
           ? html`
@@ -274,14 +290,12 @@ export function renderChat(props: ChatProps) {
           }
 
           if (item.kind === "group") {
-            const normalizedRole = normalizeRoleForGrouping(item.role);
-            const announceGroup = announcementsOn && normalizedRole === "assistant";
             return renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
-              announce: announceGroup,
+              announce: false,
             });
           }
 
@@ -318,6 +332,7 @@ export function renderChat(props: ChatProps) {
       <div
         class="chat-split-container ${sidebarOpen ? "chat-split-container--open" : ""}"
       >
+        ${statusAnnouncement}
         <div
           class="chat-main"
           style="flex: ${sidebarOpen ? `0 0 ${splitRatio * 100}%` : "1 1 100%"}"
@@ -429,6 +444,39 @@ export function renderChat(props: ChatProps) {
 }
 
 const CHAT_HISTORY_RENDER_LIMIT = 200;
+
+type AssistantSummary = {
+  text: string;
+  hasReasoning: boolean;
+  hasToolResult: boolean;
+};
+
+function extractLatestAssistantSummary(messages: unknown[]): AssistantSummary | null {
+  if (!Array.isArray(messages)) return null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const normalized = normalizeMessage(messages[i]);
+    if (normalizeRoleForGrouping(normalized.role) !== "assistant") continue;
+    const content = Array.isArray(normalized.content) ? normalized.content : [];
+    const textParts: string[] = [];
+    let hasReasoning = false;
+    let hasToolResult = false;
+    for (const item of content) {
+      const type = typeof item.type === "string" ? item.type.toLowerCase() : "";
+      if (type === "thinking") hasReasoning = true;
+      if (type === "toolresult" || type === "tool_result" || type === "tool") hasToolResult = true;
+      if (typeof item.text === "string" && (type === "" || type === "text" || type === "message")) {
+        textParts.push(item.text);
+      }
+    }
+    const summary = textParts.join(" ").replace(/\s+/g, " ").trim();
+    return {
+      text: summary,
+      hasReasoning,
+      hasToolResult,
+    };
+  }
+  return null;
+}
 
 function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
   const result: Array<ChatItem | MessageGroup> = [];

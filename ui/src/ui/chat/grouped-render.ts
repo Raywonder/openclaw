@@ -256,20 +256,6 @@ function renderGroupedMessage(
   const markdownBase = extractedText?.trim() ? extractedText : null;
   const reasoningMarkdown = extractedThinking ? formatReasoningMarkdown(extractedThinking) : null;
   const markdown = markdownBase;
-  let srToolFinished = nothing;
-  if (role.toLowerCase() === "assistant") {
-    const hasToolResult =
-      Array.isArray(m.content) &&
-      (m.content as Array<Record<string, unknown>>).some((item) => {
-        const t = typeof item.type === "string" ? item.type.toLowerCase() : "";
-        return t === "toolresult" || t === "tool_result";
-      });
-    if (hasToolResult) {
-      srToolFinished = html`<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        Tool done.
-      </div>`;
-    }
-  }
   const canCopyMarkdown = role === "assistant" && Boolean(markdown?.trim());
 
   const bubbleClasses = [
@@ -290,16 +276,12 @@ function renderGroupedMessage(
   return html`
     <div class="${bubbleClasses}">
       ${canCopyMarkdown ? renderCopyAsMarkdownButton(markdown!) : nothing}
-      ${srToolFinished}
       ${renderMessageImages(images)}
       ${
         reasoningMarkdown
-          ? html`
-              <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">Think…</div>
-              <div class="chat-thinking" aria-hidden="true">${unsafeHTML(
-                toSanitizedMarkdownHtml(reasoningMarkdown),
-              )}</div>
-            `
+          ? html`<div class="chat-thinking" aria-hidden="true">${unsafeHTML(
+              toSanitizedMarkdownHtml(reasoningMarkdown),
+            )}</div>`
           : nothing
       }
       ${
