@@ -185,10 +185,44 @@ export function renderChat(props: ChatProps) {
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
   };
   const announcementsOn = props.announceMessages;
-  const waitingForReply = props.sending || props.stream !== null;
+  let toolProgressKey = 0;
+  let pendingTool = false;
+  if (props.showThinking) {
+    for (const raw of props.toolMessages ?? []) {
+      const normalizedTool = normalizeMessage(raw);
+      if (normalizeRoleForGrouping(normalizedTool.role) !== "tool") continue;
+      let hasToolResult = false;
+      for (const item of normalizedTool.content) {
+        const type = typeof item.type === "string" ? item.type.toLowerCase() : "";
+        if (type === "toolresult" || type === "tool_result") {
+          hasToolResult = true;
+        }
+        if (typeof item.text === "string") {
+          toolProgressKey += item.text.length;
+        }
+      }
+      toolProgressKey += 1;
+      if (!hasToolResult) {
+        pendingTool = true;
+      }
+    }
+  }
+  let waitingTarget: "assistant" | "tool" | null = null;
+  if (props.stream !== null) {
+    waitingTarget = "assistant";
+  } else if (pendingTool) {
+    waitingTarget = "tool";
+  } else if (props.sending) {
+    waitingTarget = "assistant";
+  }
+  const waitingForReply = waitingTarget !== null;
   const streamText = props.stream ?? "";
-  const waitingEllipsisCount = waitingForReply ? ((streamText.length % 3) + 1) : 0;
-  const waitingStatusText = waitingForReply ? `Waiting${".".repeat(waitingEllipsisCount)}` : null;
+  const waitingTickSource =
+    waitingTarget === "tool" ? toolProgressKey + (props.toolMessages?.length ?? 0) : streamText.length;
+  const waitingEllipsisCount = waitingForReply ? ((waitingTickSource % 3) + 1) : 0;
+  const waitingStatusText = waitingTarget
+    ? `${waitingTarget === "tool" ? "Waiting for tool" : "Waiting for avatar"}${".".repeat(waitingEllipsisCount)}`
+    : null;
   const waitingStatus = waitingStatusText
     ? html`<div class="sr-only chat-status-announcement" role="status" aria-live="polite" aria-atomic="true">
         ${waitingStatusText}
