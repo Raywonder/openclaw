@@ -266,7 +266,7 @@ function renderGroupedMessage(
       });
     if (hasToolResult) {
       srToolFinished = html`<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        Tool finished.
+        Tool done.
       </div>`;
     }
   }
@@ -295,7 +295,7 @@ function renderGroupedMessage(
       ${
         reasoningMarkdown
           ? html`
-              <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">Thinking…</div>
+              <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">Think…</div>
               <div class="chat-thinking" aria-hidden="true">${unsafeHTML(
                 toSanitizedMarkdownHtml(reasoningMarkdown),
               )}</div>

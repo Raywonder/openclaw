@@ -221,7 +221,7 @@ export function renderChat(props: ChatProps) {
     waitingTarget === "tool" ? toolProgressKey + (props.toolMessages?.length ?? 0) : streamText.length;
   const waitingEllipsisCount = waitingForReply ? ((waitingTickSource % 3) + 1) : 0;
   const waitingStatusText = waitingTarget
-    ? `${waitingTarget === "tool" ? "Waiting for tool" : "Waiting for avatar"}${".".repeat(waitingEllipsisCount)}`
+    ? `${waitingTarget === "tool" ? "Wait tool" : "Wait reply"}${".".repeat(waitingEllipsisCount)}`
     : null;
   const waitingStatus = waitingStatusText
     ? html`<div class="sr-only chat-status-announcement" role="status" aria-live="polite" aria-atomic="true">
