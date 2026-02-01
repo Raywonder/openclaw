@@ -242,11 +242,12 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="off"
+      aria-live="polite"
       aria-relevant="additions"
       aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
     >
+      ${waitingStatus}
       ${
         props.loading
           ? html`
@@ -321,7 +322,6 @@ export function renderChat(props: ChatProps) {
           class="chat-main"
           style="flex: ${sidebarOpen ? `0 0 ${splitRatio * 100}%` : "1 1 100%"}"
         >
-          ${waitingStatus}
           ${thread}
         </div>
 
