@@ -295,7 +295,7 @@ export function renderChat(props: ChatProps) {
     <section class="card chat">
       ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
 
-      ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
+      ${props.error ? html`<div class="callout danger" role="alert">${props.error}</div>` : nothing}
 
       ${renderCompactionIndicator(props.compactionStatus)}
 
@@ -352,7 +352,7 @@ export function renderChat(props: ChatProps) {
       ${
         props.queue.length
           ? html`
-            <div class="chat-queue" role="status" aria-live="polite">
+            <div class="chat-queue" aria-live="off">
               <div class="chat-queue__title">Queued (${props.queue.length})</div>
               <div class="chat-queue__list">
                 ${props.queue.map(
