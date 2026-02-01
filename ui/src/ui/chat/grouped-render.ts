@@ -91,6 +91,10 @@ export function renderStreamingGroup(
     >
       ${renderAvatar("assistant", assistant)}
       <div class="chat-group-messages">
+        <h2 id=${headingId} class="chat-group-footer">
+          <span class="chat-sender-name">${name}</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </h2>
         ${renderGroupedMessage(
           {
             role: "assistant",
@@ -100,10 +104,6 @@ export function renderStreamingGroup(
           { isStreaming: true, showReasoning: false },
           onOpenSidebar,
         )}
-        <h2 id=${headingId} class="chat-group-footer">
-          <span class="chat-sender-name">${name}</span>
-          <span class="chat-group-timestamp">${timestamp}</span>
-        </h2>
       </div>
     </article>
   `;
@@ -148,6 +148,10 @@ export function renderMessageGroup(
         avatar: opts.assistantAvatar ?? null,
       })}
       <div class="chat-group-messages">
+        <h2 id=${headingId} class="chat-group-footer">
+          <span class="chat-sender-name">${who}</span>
+          <span class="chat-group-timestamp">${timestamp}</span>
+        </h2>
         ${group.messages.map((item, index) =>
           renderGroupedMessage(
             item.message,
@@ -158,10 +162,6 @@ export function renderMessageGroup(
             opts.onOpenSidebar,
           ),
         )}
-        <h2 id=${headingId} class="chat-group-footer">
-          <span class="chat-sender-name">${who}</span>
-          <span class="chat-group-timestamp">${timestamp}</span>
-        </h2>
       </div>
     </article>
   `;
