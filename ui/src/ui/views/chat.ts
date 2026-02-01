@@ -185,7 +185,7 @@ export function renderChat(props: ChatProps) {
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
   };
   const announcementsOn = props.announceMessages;
-  const waitingForReply = props.stream !== null;
+  const waitingForReply = props.sending || props.stream !== null;
   const streamText = props.stream ?? "";
   const waitingEllipsisCount = waitingForReply ? ((streamText.length % 3) + 1) : 0;
   const waitingStatusText = waitingForReply ? `Waiting${".".repeat(waitingEllipsisCount)}` : null;
@@ -208,7 +208,7 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="off"
+      aria-live="polite"
       aria-relevant="additions"
       aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
