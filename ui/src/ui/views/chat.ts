@@ -208,7 +208,7 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="polite"
+      aria-live="off"
       aria-relevant="additions"
       aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
