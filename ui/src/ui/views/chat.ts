@@ -185,6 +185,15 @@ export function renderChat(props: ChatProps) {
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
   };
   const announcementsOn = props.announceMessages;
+  const waitingForReply = props.stream !== null;
+  const streamText = props.stream ?? "";
+  const waitingEllipsisCount = waitingForReply ? ((streamText.length % 3) + 1) : 0;
+  const waitingStatusText = waitingForReply ? `Waiting${".".repeat(waitingEllipsisCount)}` : null;
+  const waitingStatus = waitingStatusText
+    ? html`<div class="sr-only chat-status-announcement" role="status" aria-live="polite" aria-atomic="true">
+        ${waitingStatusText}
+      </div>`
+    : nothing;
 
   const hasAttachments = (props.attachments?.length ?? 0) > 0;
   const composePlaceholder = props.connected
@@ -199,8 +208,9 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="off"
+      aria-live="polite"
       aria-relevant="additions"
+      aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
     >
       ${
@@ -277,6 +287,7 @@ export function renderChat(props: ChatProps) {
           class="chat-main"
           style="flex: ${sidebarOpen ? `0 0 ${splitRatio * 100}%` : "1 1 100%"}"
         >
+          ${waitingStatus}
           ${thread}
         </div>
 
