@@ -213,6 +213,7 @@ export function renderChat(props: ChatProps) {
       aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
     >
+      ${waitingStatus}
       ${
         props.loading
           ? html`
@@ -239,8 +240,8 @@ export function renderChat(props: ChatProps) {
           }
 
           if (item.kind === "group") {
-            const announceGroup =
-              announcementsOn && normalizeRoleForGrouping(item.role) !== "user";
+            const normalizedRole = normalizeRoleForGrouping(item.role);
+            const announceGroup = announcementsOn && normalizedRole === "assistant";
             return renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
