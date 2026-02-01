@@ -193,13 +193,15 @@ function renderAvatar(role: string, assistant?: Pick<AssistantIdentity, "name" |
       return html`<img
         class="chat-avatar ${className}"
         src="${assistantAvatar}"
-        alt="${assistantName}"
+        alt=""
+        role="presentation"
+        aria-hidden="true"
       />`;
     }
-    return html`<div class="chat-avatar ${className}">${assistantAvatar}</div>`;
+    return html`<div class="chat-avatar ${className}" aria-hidden="true" role="presentation">${assistantAvatar}</div>`;
   }
 
-  return html`<div class="chat-avatar ${className}">${initial}</div>`;
+  return html`<div class="chat-avatar ${className}" aria-hidden="true" role="presentation">${initial}</div>`;
 }
 
 function isAvatarUrl(value: string): boolean {
