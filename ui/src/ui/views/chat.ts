@@ -184,6 +184,7 @@ export function renderChat(props: ChatProps) {
     name: props.assistantName,
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
   };
+  const announcementsOn = props.announceMessages;
   let toolProgressKey = 0;
   let pendingTool = false;
   if (props.showThinking) {
@@ -221,23 +222,13 @@ export function renderChat(props: ChatProps) {
   const waitingEllipsisCount = waitingForReply ? ((waitingTickSource % 3) + 1) : 0;
   const latestAssistant = extractLatestAssistantSummary(props.messages);
   let statusText: string | null = null;
-  if (props.announceMessages) {
+  if (announcementsOn) {
     if (props.loading) {
       statusText = "Loading chat…";
     } else if (waitingTarget === "tool") {
       statusText = `Wait tool${".".repeat(waitingEllipsisCount)}`;
     } else if (waitingTarget === "assistant") {
       statusText = latestAssistant?.hasReasoning ? "Think…" : `Wait reply${".".repeat(waitingEllipsisCount)}`;
-    } else if (latestAssistant) {
-      if (latestAssistant.text) {
-        let summary = latestAssistant.text;
-        if (summary.length > 180) summary = `${summary.slice(0, 177)}…`;
-        statusText = `Ans: ${summary}`;
-      } else if (latestAssistant.hasToolResult) {
-        statusText = "Tool done.";
-      } else {
-        statusText = "Reply ready.";
-      }
     }
   }
   const statusAnnouncement = statusText
@@ -259,7 +250,7 @@ export function renderChat(props: ChatProps) {
     <div
       class="chat-thread"
       role="log"
-      aria-live="off"
+      aria-live="polite"
       aria-relevant="additions"
       aria-busy=${waitingForReply ? "true" : "false"}
       @scroll=${props.onChatScroll}
@@ -290,12 +281,14 @@ export function renderChat(props: ChatProps) {
           }
 
           if (item.kind === "group") {
+            const normalizedRole = normalizeRoleForGrouping(item.role);
+            const announceGroup = announcementsOn && normalizedRole === "assistant" && !waitingForReply;
             return renderMessageGroup(item, {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
-              announce: false,
+              announce: announceGroup,
             });
           }
 
