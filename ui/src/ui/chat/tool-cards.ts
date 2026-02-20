@@ -50,6 +50,9 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
   const display = resolveToolDisplay({ name: card.name, args: card.args });
   const detail = formatToolDetail(display);
   const hasText = Boolean(card.text?.trim());
+  const actionLabel = hasText
+    ? `Open tool output for ${display.label}`
+    : `Open execution details for ${display.label}`;
 
   const canClick = Boolean(onOpenSidebar);
   const handleClick = canClick
@@ -76,6 +79,7 @@ export function renderToolCardSidebar(card: ToolCard, onOpenSidebar?: (content: 
       @click=${handleClick}
       role=${canClick ? "button" : nothing}
       tabindex=${canClick ? "0" : nothing}
+      aria-label=${canClick ? actionLabel : nothing}
       @keydown=${
         canClick
           ? (e: KeyboardEvent) => {

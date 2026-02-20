@@ -20,16 +20,25 @@ export function renderExecApprovalPrompt(state: AppViewState) {
   const active = state.execApprovalQueue[0];
   if (!active) return nothing;
   const request = active.request;
+  const titleId = "exec-approval-title";
+  const descriptionId = "exec-approval-description";
   const remainingMs = active.expiresAtMs - Date.now();
   const remaining = remainingMs > 0 ? `expires in ${formatRemaining(remainingMs)}` : "expired";
   const queueCount = state.execApprovalQueue.length;
   return html`
-    <div class="exec-approval-overlay" role="dialog" aria-live="polite">
+    <div
+      class="exec-approval-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-live="polite"
+      aria-labelledby=${titleId}
+      aria-describedby=${descriptionId}
+    >
       <div class="exec-approval-card">
         <div class="exec-approval-header">
           <div>
-            <div class="exec-approval-title">Exec approval needed</div>
-            <div class="exec-approval-sub">${remaining}</div>
+            <div class="exec-approval-title" id=${titleId}>Exec approval needed</div>
+            <div class="exec-approval-sub" id=${descriptionId}>${remaining}</div>
           </div>
           ${
             queueCount > 1
@@ -49,7 +58,7 @@ export function renderExecApprovalPrompt(state: AppViewState) {
         </div>
         ${
           state.execApprovalError
-            ? html`<div class="exec-approval-error">${state.execApprovalError}</div>`
+            ? html`<div class="exec-approval-error" role="alert">${state.execApprovalError}</div>`
             : nothing
         }
         <div class="exec-approval-actions">
