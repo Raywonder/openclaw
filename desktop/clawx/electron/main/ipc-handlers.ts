@@ -4,7 +4,7 @@
  */
 import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage } from 'electron';
 import { existsSync, cpSync, mkdirSync, rmSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, userInfo } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
 import { GatewayManager } from '../gateway/manager';
@@ -2614,6 +2614,30 @@ function registerAppHandlers(): void {
   // Get app path
   ipcMain.handle('app:getPath', (_, name: Parameters<typeof app.getPath>[0]) => {
     return app.getPath(name);
+  });
+
+  // Get onboarding defaults from local account info.
+  ipcMain.handle('app:userProfileDefaults', () => {
+    const info = userInfo();
+    const env = process.env;
+    const rawName =
+      env['CONTACT_NAME'] ||
+      env['REALNAME'] ||
+      env['FULLNAME'] ||
+      env['USER_FULL_NAME'] ||
+      info.username ||
+      '';
+
+    const normalizedName = String(rawName).replace(/[._-]+/g, ' ').trim();
+
+    return {
+      name: normalizedName,
+      role: env['JOB_TITLE'] || env['ROLE'] || '',
+      organization: env['ORG'] || env['ORGANIZATION'] || '',
+      useCase: '',
+      preference: 'guided',
+      trainOnLocalData: true,
+    };
   });
 
   // Get platform

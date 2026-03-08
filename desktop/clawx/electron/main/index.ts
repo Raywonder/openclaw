@@ -20,6 +20,7 @@ import { isQuitting, setQuitting } from './app-state';
 import { applyProxySettings } from './proxy';
 import { getSetting } from '../utils/store';
 import { ensureBuiltinSkillsInstalled } from '../utils/skill-config';
+import { ensureGovernanceBundleInstalled } from '../utils/governance';
 
 // Disable GPU hardware acceleration globally for maximum stability across
 // all GPU configurations (no GPU, integrated, discrete).
@@ -146,6 +147,12 @@ async function initialize(): Promise<void> {
 
   // Warm up network optimization (non-blocking)
   void warmupNetworkOptimization();
+
+  // Provision bundled AGENTS/GOVERNANCE/GitHub rules into a per-user folder.
+  // Files are copied only when missing, so user customizations are preserved.
+  void ensureGovernanceBundleInstalled().catch((error) => {
+    logger.warn('Failed to provision governance bundle:', error);
+  });
 
   // Apply persisted proxy settings before creating windows or network requests.
   await applyProxySettings();

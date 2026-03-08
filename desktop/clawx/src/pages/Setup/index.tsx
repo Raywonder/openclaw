@@ -38,6 +38,15 @@ interface SetupStep {
   description: string;
 }
 
+interface OnboardingProfile {
+  name: string;
+  role: string;
+  organization: string;
+  useCase: string;
+  preference: 'guided' | 'balanced' | 'power';
+  trainOnLocalData: boolean;
+}
+
 const STEP = {
   WELCOME: 0,
   RUNTIME: 1,
@@ -115,6 +124,14 @@ export function Setup() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [providerConfigured, setProviderConfigured] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [onboardingProfile, setOnboardingProfile] = useState<OnboardingProfile>({
+    name: '',
+    role: '',
+    organization: '',
+    useCase: '',
+    preference: 'guided',
+    trainOnLocalData: true,
+  });
   // Installation state for the Installing step
   const [installedSkills, setInstalledSkills] = useState<string[]>([]);
   // Runtime check status
@@ -160,6 +177,22 @@ export function Setup() {
   }, [runtimeChecksPassed, safeStepIndex]);
 
   const handleNext = async () => {
+    if (safeStepIndex === STEP.WELCOME) {
+      try {
+        await invokeIpc('settings:setMany', {
+          userProfileName: onboardingProfile.name.trim(),
+          userProfileRole: onboardingProfile.role.trim(),
+          userProfileOrganization: onboardingProfile.organization.trim(),
+          userProfileUseCase: onboardingProfile.useCase.trim(),
+          userProfilePreference: onboardingProfile.preference,
+          onboardingProfileCapturedAt: new Date().toISOString(),
+          localDataLearningEnabled: onboardingProfile.trainOnLocalData,
+        });
+      } catch {
+        // Non-fatal: onboarding can continue even if profile persistence fails
+      }
+    }
+
     if (isLastStep) {
       // Complete setup
       markSetupComplete();
@@ -243,7 +276,12 @@ export function Setup() {
 
             {/* Step-specific content */}
             <div className="rounded-xl bg-card text-card-foreground border shadow-sm p-8 mb-8">
-              {safeStepIndex === STEP.WELCOME && <WelcomeContent />}
+              {safeStepIndex === STEP.WELCOME && (
+                <WelcomeContent
+                  profile={onboardingProfile}
+                  onProfileChange={setOnboardingProfile}
+                />
+              )}
               {safeStepIndex === STEP.RUNTIME && <RuntimeContent onStatusChange={setRuntimeChecksPassed} />}
               {safeStepIndex === STEP.PROVIDER && (
                 <ProviderContent
@@ -309,9 +347,43 @@ export function Setup() {
 
 // ==================== Step Content Components ====================
 
-function WelcomeContent() {
+interface WelcomeContentProps {
+  profile: OnboardingProfile;
+  onProfileChange: (profile: OnboardingProfile) => void;
+}
+
+function WelcomeContent({ profile, onProfileChange }: WelcomeContentProps) {
   const { t } = useTranslation(['setup', 'settings']);
   const { language, setLanguage } = useSettingsStore();
+
+  useEffect(() => {
+    const shouldHydrate =
+      !profile.name && !profile.role && !profile.organization && !profile.useCase;
+    if (!shouldHydrate) return;
+
+    let cancelled = false;
+    void invokeIpc<Partial<OnboardingProfile>>('app:userProfileDefaults')
+      .then((defaults) => {
+        if (cancelled || !defaults) return;
+        onProfileChange({
+          name: defaults.name ?? '',
+          role: defaults.role ?? '',
+          organization: defaults.organization ?? '',
+          useCase: defaults.useCase ?? '',
+          preference: defaults.preference ?? 'guided',
+          trainOnLocalData: defaults.trainOnLocalData ?? true,
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onProfileChange, profile.name, profile.organization, profile.role, profile.useCase]);
+
+  const updateProfile = <K extends keyof OnboardingProfile>(key: K, value: OnboardingProfile[K]) => {
+    onProfileChange({ ...profile, [key]: value });
+  };
 
   return (
     <div className="text-center space-y-4">
@@ -336,6 +408,69 @@ function WelcomeContent() {
             {lang.label}
           </Button>
         ))}
+      </div>
+
+      <div className="rounded-lg border border-border/60 p-4 text-left space-y-3">
+        <p className="text-sm font-medium">Quick profile (prefilled from local account/contact info)</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="profile-name">Name</Label>
+            <Input
+              id="profile-name"
+              value={profile.name}
+              onChange={(e) => updateProfile('name', e.target.value)}
+              placeholder="Display name"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="profile-role">Role</Label>
+            <Input
+              id="profile-role"
+              value={profile.role}
+              onChange={(e) => updateProfile('role', e.target.value)}
+              placeholder="Admin, developer, creator..."
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="profile-org">Organization</Label>
+            <Input
+              id="profile-org"
+              value={profile.organization}
+              onChange={(e) => updateProfile('organization', e.target.value)}
+              placeholder="Team or company"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="profile-mode">Usage mode</Label>
+            <select
+              id="profile-mode"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={profile.preference}
+              onChange={(e) => updateProfile('preference', e.target.value as OnboardingProfile['preference'])}
+            >
+              <option value="guided">Guided (minimal learning curve)</option>
+              <option value="balanced">Balanced</option>
+              <option value="power">Power user</option>
+            </select>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="profile-usecase">Primary goal</Label>
+          <Input
+            id="profile-usecase"
+            value={profile.useCase}
+            onChange={(e) => updateProfile('useCase', e.target.value)}
+            placeholder="What do you want to do first?"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={profile.trainOnLocalData}
+            onChange={(e) => updateProfile('trainOnLocalData', e.target.checked)}
+          />
+          Enable local-data learning by default on this system
+        </label>
       </div>
 
       <ul className="text-left space-y-2 text-muted-foreground pt-2">
