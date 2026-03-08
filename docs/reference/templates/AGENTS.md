@@ -216,3 +216,32 @@ The goal: Be helpful without being annoying. Check in a few times a day, do usef
 ## Make It Yours
 
 This is a starting point. Add your own conventions, style, and rules as you figure out what works.
+
+==================================================
+DOCUMENTATION WORKFLOW (MANDATORY)
+==================================================
+
+Before any build, installer replacement, or live documentation publish:
+
+1. Documentation update pass
+   - Update user docs, admin docs, install docs, help text, and feature
+     references for changed functionality.
+
+2. Documentation review pass
+   - A separate review pass must confirm docs match the real feature set and UI.
+
+3. Final confirmation
+   - Only after review passes may docs be replaced in live locations and
+     builds be generated or uploaded.
+
+Minimum review checklist:
+- feature names and labels match current UI
+- role visibility and permissions are correct
+- removed or disabled features are not still documented as active
+- download links, versions, checksums, and package names are current
+- in-app help targets and web docs URLs point to first-party docs
+
+Default rule:
+- Prefer first-party docs and in-app docs over GitHub README links for end
+  users whenever those docs exist.
+
