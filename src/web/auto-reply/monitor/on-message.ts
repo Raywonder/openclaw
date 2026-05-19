@@ -5,6 +5,8 @@ import type { MentionConfig } from "../mentions.js";
 import type { WebInboundMsg } from "../types.js";
 import type { EchoTracker } from "./echo.js";
 import type { GroupHistoryEntry } from "./group-gating.js";
+import type { ConversationHistoryEntry } from "./process-message.js";
+import { appendHistoryEntry } from "../../../auto-reply/reply/history.js";
 import { logVerbose } from "../../../globals.js";
 import { resolveAgentRoute } from "../../../routing/resolve-route.js";
 import { buildGroupHistoryKey } from "../../../routing/session-key.js";
@@ -22,6 +24,7 @@ export function createWebOnMessageHandler(params: {
   maxMediaBytes: number;
   groupHistoryLimit: number;
   groupHistories: Map<string, GroupHistoryEntry[]>;
+  conversationHistories: Map<string, ConversationHistoryEntry[]>;
   groupMemberNames: Map<string, Map<string, string>>;
   echoTracker: EchoTracker;
   backgroundTasks: Set<Promise<unknown>>;
@@ -36,6 +39,7 @@ export function createWebOnMessageHandler(params: {
     groupHistoryKey: string,
     opts?: {
       groupHistory?: GroupHistoryEntry[];
+      conversationHistory?: ConversationHistoryEntry[];
       suppressGroupHistoryClear?: boolean;
     },
   ) =>
@@ -57,6 +61,7 @@ export function createWebOnMessageHandler(params: {
       echoForget: params.echoTracker.forget,
       buildCombinedEchoKey: params.echoTracker.buildCombinedKey,
       groupHistory: opts?.groupHistory,
+      conversationHistory: opts?.conversationHistory,
       suppressGroupHistoryClear: opts?.suppressGroupHistoryClear,
     });
 
@@ -81,6 +86,12 @@ export function createWebOnMessageHandler(params: {
             peerId,
           })
         : route.sessionKey;
+    const sender =
+      msg.chatType === "group"
+        ? msg.senderName && msg.senderE164
+          ? `${msg.senderName} (${msg.senderE164})`
+          : (msg.senderName ?? msg.senderE164 ?? "Unknown")
+        : (msg.senderName ?? msg.senderE164 ?? msg.from);
 
     // Same-phone mode logging retained
     if (msg.from === msg.to) {
@@ -93,6 +104,20 @@ export function createWebOnMessageHandler(params: {
       params.echoTracker.forget(msg.body);
       return;
     }
+
+    const conversationHistory = appendHistoryEntry({
+      historyMap: params.conversationHistories,
+      historyKey: groupHistoryKey,
+      limit: params.groupHistoryLimit,
+      entry: {
+        sender,
+        body: msg.body,
+        timestamp: msg.timestamp,
+        id: msg.id,
+        senderJid: msg.senderJid,
+        role: "user",
+      },
+    });
 
     if (msg.chatType === "group") {
       const metaCtx = {
@@ -158,12 +183,13 @@ export function createWebOnMessageHandler(params: {
         route,
         groupHistoryKey,
         groupHistories: params.groupHistories,
+        conversationHistory: [...conversationHistory],
         processMessage: processForRoute,
       })
     ) {
       return;
     }
 
-    await processForRoute(msg, route, groupHistoryKey);
+    await processForRoute(msg, route, groupHistoryKey, { conversationHistory });
   };
 }

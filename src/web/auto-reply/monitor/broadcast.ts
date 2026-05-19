@@ -1,7 +1,7 @@
 import type { loadConfig } from "../../../config/config.js";
 import type { resolveAgentRoute } from "../../../routing/resolve-route.js";
 import type { WebInboundMsg } from "../types.js";
-import type { GroupHistoryEntry } from "./process-message.js";
+import type { ConversationHistoryEntry, GroupHistoryEntry } from "./process-message.js";
 import { buildAgentSessionKey } from "../../../routing/resolve-route.js";
 import {
   buildAgentMainSessionKey,
@@ -18,12 +18,14 @@ export async function maybeBroadcastMessage(params: {
   route: ReturnType<typeof resolveAgentRoute>;
   groupHistoryKey: string;
   groupHistories: Map<string, GroupHistoryEntry[]>;
+  conversationHistory?: ConversationHistoryEntry[];
   processMessage: (
     msg: WebInboundMsg,
     route: ReturnType<typeof resolveAgentRoute>,
     groupHistoryKey: string,
     opts?: {
       groupHistory?: GroupHistoryEntry[];
+      conversationHistory?: ConversationHistoryEntry[];
       suppressGroupHistoryClear?: boolean;
     },
   ) => Promise<boolean>;
@@ -75,6 +77,7 @@ export async function maybeBroadcastMessage(params: {
     try {
       return await params.processMessage(params.msg, agentRoute, params.groupHistoryKey, {
         groupHistory: groupHistorySnapshot,
+        conversationHistory: params.conversationHistory,
         suppressGroupHistoryClear: true,
       });
     } catch (err) {

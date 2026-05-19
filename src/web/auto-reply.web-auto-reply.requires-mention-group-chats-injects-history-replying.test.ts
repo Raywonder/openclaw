@@ -525,4 +525,62 @@ describe("web auto-reply", () => {
     expect(payload.To).toBe("+19998887777");
     expect(payload.OriginatingTo).not.toBe(payload.To);
   });
+
+  it("injects rolling direct-chat context including Clawdia replies", async () => {
+    const sendMedia = vi.fn();
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const sendComposing = vi.fn();
+    const resolver = vi
+      .fn()
+      .mockResolvedValueOnce({ text: "I can help with that." })
+      .mockResolvedValueOnce({ text: "Still with you." });
+
+    let capturedOnMessage:
+      | ((msg: import("./inbound.js").WebInboundMessage) => Promise<void>)
+      | undefined;
+    const listenerFactory = async (opts: {
+      onMessage: (msg: import("./inbound.js").WebInboundMessage) => Promise<void>;
+    }) => {
+      capturedOnMessage = opts.onMessage;
+      return { close: vi.fn() };
+    };
+
+    await monitorWebChannel(false, listenerFactory, false, resolver);
+    expect(capturedOnMessage).toBeDefined();
+
+    await capturedOnMessage?.({
+      body: "Clawdia, help me with the server",
+      from: "+13364626141",
+      to: "+13364626141",
+      id: "dm1",
+      timestamp: 1_770_000_000_000,
+      senderE164: "+13364626141",
+      senderName: "Dominique",
+      selfE164: "+13364626141",
+      sendComposing,
+      reply,
+      sendMedia,
+    });
+
+    await capturedOnMessage?.({
+      body: "what did I just ask you?",
+      from: "+13364626141",
+      to: "+13364626141",
+      id: "dm2",
+      timestamp: 1_770_000_060_000,
+      senderE164: "+13364626141",
+      senderName: "Dominique",
+      selfE164: "+13364626141",
+      sendComposing,
+      reply,
+      sendMedia,
+    });
+
+    expect(resolver).toHaveBeenCalledTimes(2);
+    const secondPayload = resolver.mock.calls[1][0];
+    expect(secondPayload.Body).toContain("Chat messages since your last reply");
+    expect(secondPayload.Body).toContain("Clawdia, help me with the server");
+    expect(secondPayload.Body).toContain("I can help with that.");
+    expect(secondPayload.Body).toContain("what did I just ask you?");
+  });
 });

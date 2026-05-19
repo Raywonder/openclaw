@@ -110,6 +110,17 @@ export async function monitorWebChannel(
       senderJid?: string;
     }>
   >();
+  const conversationHistories = new Map<
+    string,
+    Array<{
+      sender: string;
+      body: string;
+      timestamp?: number;
+      id?: string;
+      senderJid?: string;
+      role?: "user" | "assistant";
+    }>
+  >();
   const groupMemberNames = new Map<string, Map<string, string>>();
   const echoTracker = createEchoTracker({ maxItems: 100, logVerbose });
 
@@ -166,6 +177,7 @@ export async function monitorWebChannel(
       maxMediaBytes,
       groupHistoryLimit,
       groupHistories,
+      conversationHistories,
       groupMemberNames,
       echoTracker,
       backgroundTasks,

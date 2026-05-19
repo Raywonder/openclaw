@@ -46,6 +46,10 @@ export type GroupHistoryEntry = {
   senderJid?: string;
 };
 
+export type ConversationHistoryEntry = GroupHistoryEntry & {
+  role?: "user" | "assistant";
+};
+
 function normalizeAllowFromE164(values: Array<string | number> | undefined): string[] {
   const list = Array.isArray(values) ? values : [];
   return list
@@ -129,6 +133,7 @@ export async function processMessage(params: {
   buildCombinedEchoKey: (p: { sessionKey: string; combinedBody: string }) => string;
   maxMediaTextChunkLimit?: number;
   groupHistory?: GroupHistoryEntry[];
+  conversationHistory?: ConversationHistoryEntry[];
   suppressGroupHistoryClear?: boolean;
 }) {
   const conversationId = params.msg.conversationId ?? params.msg.from;
@@ -149,7 +154,33 @@ export async function processMessage(params: {
   });
   let shouldClearGroupHistory = false;
 
-  if (params.msg.chatType === "group") {
+  const conversationHistoryEntries = params.conversationHistory ?? [];
+  if (conversationHistoryEntries.length > 0) {
+    combinedBody = buildHistoryContextFromEntries({
+      entries: conversationHistoryEntries.map((entry) => ({
+        sender: entry.sender,
+        body: entry.body,
+        timestamp: entry.timestamp,
+        messageId: entry.id,
+      })),
+      currentMessage: combinedBody,
+      excludeLast: true,
+      formatEntry: (entry) => {
+        const bodyWithId = entry.messageId
+          ? `${entry.body}\n[message_id: ${entry.messageId}]`
+          : entry.body;
+        return formatInboundEnvelope({
+          channel: "WhatsApp",
+          from: conversationId,
+          timestamp: entry.timestamp,
+          body: bodyWithId,
+          chatType: params.msg.chatType,
+          senderLabel: entry.sender,
+          envelope: envelopeOptions,
+        });
+      },
+    });
+  } else if (params.msg.chatType === "group") {
     const history = params.groupHistory ?? params.groupHistories.get(params.groupHistoryKey) ?? [];
     if (history.length > 0) {
       const historyEntries: HistoryEntry[] = history.map((m) => ({
@@ -364,6 +395,15 @@ export async function processMessage(params: {
         if (info.kind === "tool") {
           params.rememberSentText(payload.text, {});
           return;
+        }
+        if (info.kind === "final" && payload.text && params.conversationHistory) {
+          params.conversationHistory.push({
+            sender: resolveIdentityNamePrefix(params.cfg, params.route.agentId) ?? "Clawdia",
+            body: payload.text,
+            timestamp: Date.now(),
+            id: `sent:${Date.now()}`,
+            role: "assistant",
+          });
         }
         const shouldLog = info.kind === "final" && payload.text ? true : undefined;
         params.rememberSentText(payload.text, {
