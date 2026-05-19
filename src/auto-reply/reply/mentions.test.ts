@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesMentionWithExplicit } from "./mentions.js";
+import { buildMentionRegexes, matchesMentionWithExplicit } from "./mentions.js";
 
 describe("matchesMentionWithExplicit", () => {
   const mentionRegexes = [/\bopenclaw\b/i];
@@ -54,5 +54,26 @@ describe("matchesMentionWithExplicit", () => {
       },
     });
     expect(result).toBe(true);
+  });
+});
+
+describe("buildMentionRegexes", () => {
+  it("derives a case-insensitive @Clawdia mention from the agent identity", () => {
+    const regexes = buildMentionRegexes(
+      {
+        agents: {
+          list: [
+            {
+              id: "clawdia",
+              identity: { name: "Clawdia" },
+            },
+          ],
+        },
+      },
+      "clawdia",
+    );
+
+    expect(regexes.some((regex) => regex.test("@Clawdia can you see this?"))).toBe(true);
+    expect(regexes.some((regex) => regex.test("@clawdia can you see this?"))).toBe(true);
   });
 });

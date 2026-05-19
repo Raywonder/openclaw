@@ -314,6 +314,72 @@ describe("web monitor inbox", () => {
     await listener.close();
   });
 
+  it("honors account-level dmPolicy open for existing chats", async () => {
+    mockLoadConfig.mockReturnValue({
+      channels: {
+        whatsapp: {
+          dmPolicy: "pairing",
+          accounts: {
+            clawdia: {
+              dmPolicy: "open",
+              allowFrom: [],
+            },
+          },
+        },
+      },
+      messages: {
+        messagePrefix: undefined,
+        responsePrefix: undefined,
+      },
+    });
+
+    const onMessage = vi.fn();
+    const listener = await monitorWebInbox({
+      verbose: false,
+      accountId: "clawdia",
+      authDir,
+      onMessage,
+    });
+    const sock = await createWaSocket();
+
+    const upsert = {
+      type: "notify",
+      messages: [
+        {
+          key: {
+            id: "account-dm-open-1",
+            fromMe: false,
+            remoteJid: "999@s.whatsapp.net",
+          },
+          message: { conversation: "hey clawdia" },
+          messageTimestamp: nowSeconds(),
+        },
+      ],
+    };
+
+    sock.ev.emit("messages.upsert", upsert);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(onMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: "hey clawdia",
+        from: "+999",
+      }),
+    );
+    expect(upsertPairingRequestMock).not.toHaveBeenCalled();
+    expect(sock.sendMessage).not.toHaveBeenCalled();
+
+    mockLoadConfig.mockReturnValue({
+      channels: { whatsapp: { allowFrom: ["*"] } },
+      messages: {
+        messagePrefix: undefined,
+        responsePrefix: undefined,
+      },
+    });
+
+    await listener.close();
+  });
+
   it("skips pairing replies for outbound DMs in same-phone mode", async () => {
     mockLoadConfig.mockReturnValue({
       channels: {
