@@ -50,6 +50,13 @@ export type ConversationHistoryEntry = GroupHistoryEntry & {
   role?: "user" | "assistant";
 };
 
+const TRANSIENT_FAILURE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
+const transientFailureNoticeLastSent = new Map<string, number>();
+
+function isTransientFailureNotice(text: string | undefined): boolean {
+  return Boolean(text?.includes("I’m having trouble reaching my chat model right now."));
+}
+
 function normalizeAllowFromE164(values: Array<string | number> | undefined): string[] {
   const list = Array.isArray(values) ? values : [];
   return list
@@ -379,6 +386,17 @@ export async function processMessage(params: {
         }
       },
       deliver: async (payload: ReplyPayload, info) => {
+        if (info.kind === "final" && isTransientFailureNotice(payload.text)) {
+          const lastSent = transientFailureNoticeLastSent.get(params.groupHistoryKey) ?? 0;
+          const now = Date.now();
+          if (now - lastSent < TRANSIENT_FAILURE_NOTICE_COOLDOWN_MS) {
+            whatsappOutboundLog.warn(
+              `Suppressing repeated transient model failure notice to ${params.msg.from ?? conversationId}`,
+            );
+            return;
+          }
+          transientFailureNoticeLastSent.set(params.groupHistoryKey, now);
+        }
         await deliverWebReply({
           replyResult: payload,
           msg: params.msg,

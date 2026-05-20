@@ -51,6 +51,21 @@ export type AgentRunLoopResult =
     }
   | { kind: "final"; payload: ReplyPayload };
 
+function isTransientModelFailureMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("llm request timed out") ||
+    normalized.includes("request timed out") ||
+    normalized.includes("fetch timeout") ||
+    normalized.includes("ended without a visible assistant reply") ||
+    normalized.includes("rate_limit") ||
+    normalized.includes("rate limit") ||
+    normalized.includes("current quota") ||
+    normalized.includes("temporarily overloaded") ||
+    normalized.includes("http 429")
+  );
+}
+
 export async function runAgentTurnWithFallback(params: {
   commandBody: string;
   followupRun: FollowupRun;
@@ -556,7 +571,9 @@ export async function runAgentTurnWithFallback(params: {
         ? "⚠️ Context overflow — prompt too large for this model. Try a shorter message or a larger-context model."
         : isRoleOrderingError
           ? "⚠️ Message ordering conflict - please try again. If this persists, use /new to start a fresh session."
-          : `⚠️ Agent failed before reply: ${trimmedMessage}.\nLogs: openclaw logs --follow`;
+          : isTransientModelFailureMessage(trimmedMessage)
+            ? "I’m having trouble reaching my chat model right now. I saved the thread context and will pick back up from here once the model connection is healthy."
+            : `⚠️ Agent failed before reply: ${trimmedMessage}.\nLogs: openclaw logs --follow`;
 
       return {
         kind: "final",

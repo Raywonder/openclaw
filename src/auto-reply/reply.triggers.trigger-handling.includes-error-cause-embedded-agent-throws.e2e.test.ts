@@ -116,6 +116,29 @@ describe("trigger handling", () => {
       expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
     });
   });
+
+  it("uses a conversational notice for transient model failures", async () => {
+    await withTempHome(async (home) => {
+      vi.mocked(runEmbeddedPiAgent).mockRejectedValue(new Error("LLM request timed out."));
+
+      const res = await getReplyFromConfig(
+        {
+          Body: "hello",
+          From: "+1002",
+          To: "+2000",
+        },
+        {},
+        makeCfg(home),
+      );
+
+      const text = Array.isArray(res) ? res[0]?.text : res?.text;
+      expect(text).toBe(
+        "I’m having trouble reaching my chat model right now. I saved the thread context and will pick back up from here once the model connection is healthy.",
+      );
+      expect(runEmbeddedPiAgent).toHaveBeenCalledOnce();
+    });
+  });
+
   it("uses heartbeat model override for heartbeat runs", async () => {
     await withTempHome(async (home) => {
       vi.mocked(runEmbeddedPiAgent).mockResolvedValue({

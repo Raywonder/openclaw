@@ -583,4 +583,53 @@ describe("web auto-reply", () => {
     expect(secondPayload.Body).toContain("I can help with that.");
     expect(secondPayload.Body).toContain("what did I just ask you?");
   });
+
+  it("suppresses repeated transient model failure notices in one chat", async () => {
+    const sendMedia = vi.fn();
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const sendComposing = vi.fn();
+    const resolver = vi.fn().mockResolvedValue({
+      text: "I’m having trouble reaching my chat model right now. I saved the thread context and will pick back up from here once the model connection is healthy.",
+    });
+
+    let capturedOnMessage:
+      | ((msg: import("./inbound.js").WebInboundMessage) => Promise<void>)
+      | undefined;
+    const listenerFactory = async (opts: {
+      onMessage: (msg: import("./inbound.js").WebInboundMessage) => Promise<void>;
+    }) => {
+      capturedOnMessage = opts.onMessage;
+      return { close: vi.fn() };
+    };
+
+    await monitorWebChannel(false, listenerFactory, false, resolver);
+    expect(capturedOnMessage).toBeDefined();
+
+    const baseMessage = {
+      from: "+15550000001",
+      to: "+13364626141",
+      timestamp: 1_770_000_000_000,
+      senderE164: "+15550000001",
+      senderName: "Dominique",
+      selfE164: "+13364626141",
+      sendComposing,
+      reply,
+      sendMedia,
+    };
+
+    await capturedOnMessage?.({
+      ...baseMessage,
+      body: "hello",
+      id: "failure-1",
+    });
+    await capturedOnMessage?.({
+      ...baseMessage,
+      body: "hello again",
+      id: "failure-2",
+      timestamp: 1_770_000_060_000,
+    });
+
+    expect(resolver).toHaveBeenCalledTimes(2);
+    expect(reply).toHaveBeenCalledTimes(1);
+  });
 });
