@@ -31,3 +31,8 @@ Standard dev commands are in `package.json` scripts and `README.md`. Key ones:
 - **No database**: The app uses `electron-store` (JSON files) and OS keychain. No database setup is needed.
 - **AI Provider keys**: Actual AI chat requires at least one provider API key configured via Settings > AI Providers. The app is fully navigable and testable without keys.
 - **Token usage history implementation**: Dashboard token usage history is not parsed from console logs. It reads OpenClaw session transcript `.jsonl` files under the local OpenClaw config directory, extracts assistant messages with `message.usage`, and aggregates fields such as input/output/cache/total tokens and cost from those structured records.
+
+### Agent-owned communications and provider setup
+
+- Before creating or changing communication channels, provider accounts, webhooks, bots, SMS numbers, email addresses, client portal items, or automations, read applicable global governance first.
+- Use service-owned identities, document provider/account ownership and recovery, never hardcode secrets, keep webhook/callback URLs traceable, and report what remains manual.

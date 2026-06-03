@@ -107,6 +107,9 @@ const formatIsoMinute = (ms: number) => {
 };
 
 const formatDuration = (ms: number) => {
+  if (ms < 1000) {
+    return `${Math.max(1, Math.round(ms))}ms`;
+  }
   if (ms < 60_000) {
     return `${Math.max(1, Math.round(ms / 1000))}s`;
   }
@@ -120,8 +123,11 @@ const formatDuration = (ms: number) => {
 };
 
 const formatSpan = (ms: number) => {
+  if (ms < 1000) {
+    return "<1s";
+  }
   if (ms < 60_000) {
-    return "<1m";
+    return `${Math.max(1, Math.round(ms / 1000))}s`;
   }
   if (ms < 3_600_000) {
     return `${Math.round(ms / 60_000)}m`;

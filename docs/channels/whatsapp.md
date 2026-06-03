@@ -304,7 +304,7 @@ WhatsApp can automatically send emoji reactions to incoming messages immediately
 - Outbound text is chunked to `channels.whatsapp.textChunkLimit` (default 4000).
 - Optional newline chunking: set `channels.whatsapp.chunkMode="newline"` to split on blank lines (paragraph boundaries) before length chunking.
 - Inbound media saves are capped by `channels.whatsapp.mediaMaxMb` (default 50 MB).
-- Outbound media items are capped by `agents.defaults.mediaMaxMb` (default 5 MB).
+- Outbound media items use the first configured cap from `channels.whatsapp.accounts.<accountId>.mediaMaxMb`, `channels.whatsapp.mediaMaxMb`, or `agents.defaults.mediaMaxMb`; otherwise OpenClaw falls back to per-kind safety defaults.
 
 ## Outbound send (text + media)
 
@@ -328,8 +328,9 @@ WhatsApp sends audio as **voice notes** (PTT bubble).
 
 ## Media limits + optimization
 
-- Default outbound cap: 5 MB (per media item).
-- Override: `agents.defaults.mediaMaxMb`.
+- Default outbound cap: per-kind safety defaults when no WhatsApp or agent cap is set.
+- Override order: `channels.whatsapp.accounts.<accountId>.mediaMaxMb`, then `channels.whatsapp.mediaMaxMb`, then `agents.defaults.mediaMaxMb`.
+- For large WhatsApp document sends, configure the active account/root WhatsApp media cap high enough for the intended file size.
 - Images are auto-optimized to JPEG under cap (resize + quality sweep).
 - Oversize media => error; media reply falls back to text warning.
 

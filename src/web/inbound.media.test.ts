@@ -235,4 +235,49 @@ describe("web inbound media saves with extension", () => {
 
     await listener.close();
   });
+
+  it("preserves inbound document filenames when saving media", async () => {
+    const onMessage = vi.fn();
+    const listener = await monitorWebInbox({ verbose: false, onMessage });
+    const { createWaSocket } = await import("./session.js");
+    const realSock = await (
+      createWaSocket as unknown as () => Promise<{
+        ev: import("node:events").EventEmitter;
+      }>
+    )();
+
+    const upsert = {
+      type: "notify",
+      messages: [
+        {
+          key: { id: "doc1", fromMe: false, remoteJid: "333@s.whatsapp.net" },
+          message: {
+            documentMessage: {
+              mimetype: "application/pdf",
+              fileName: "Quarterly Report.pdf",
+            },
+          },
+          messageTimestamp: 1_700_000_004,
+        },
+      ],
+    };
+
+    realSock.ev.emit("messages.upsert", upsert);
+
+    for (let i = 0; i < 50; i++) {
+      if (onMessage.mock.calls.length > 0) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    const lastCall = saveMediaBufferSpy.mock.calls.at(-1);
+    expect(lastCall?.[4]).toBe("Quarterly Report.pdf");
+
+    const msg = onMessage.mock.calls[0][0];
+    expect(path.basename(msg.mediaPath as string)).toMatch(/^Quarterly_Report---.+\.pdf$/);
+
+    await listener.close();
+  });
 });

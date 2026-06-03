@@ -16,6 +16,7 @@
   - Core channel code: `src/telegram`, `src/discord`, `src/slack`, `src/signal`, `src/imessage`, `src/web` (WhatsApp web), `src/channels`, `src/routing`
   - Extensions (channel plugins): `extensions/*` (e.g. `extensions/msteams`, `extensions/matrix`, `extensions/zalo`, `extensions/zalouser`, `extensions/voice-call`)
 - When adding channels/extensions/apps/docs, review `.github/labeler.yml` for label coverage.
+- Before creating or changing any agent-owned communication provider, account, webhook, bot, phone/SMS number, email address, client portal item, or automation, read applicable global governance first. Keep docs generic in this repo: use placeholders, service-owned identities, explicit ownership notes, no hardcoded secrets, traceable webhooks, and a final report of provider/process/manual steps.
 
 ## Docs Linking (Mintlify)
 
@@ -204,4 +205,3 @@ Minimum review checklist:
 Default rule:
 - Prefer first-party docs and in-app docs over GitHub README links for end
   users whenever those docs exist.
-

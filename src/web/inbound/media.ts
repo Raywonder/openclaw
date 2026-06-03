@@ -11,7 +11,7 @@ function unwrapMessage(message: proto.IMessage | undefined): proto.IMessage | un
 export async function downloadInboundMedia(
   msg: proto.IWebMessageInfo,
   sock: Awaited<ReturnType<typeof createWaSocket>>,
-): Promise<{ buffer: Buffer; mimetype?: string } | undefined> {
+): Promise<{ buffer: Buffer; mimetype?: string; fileName?: string } | undefined> {
   const message = unwrapMessage(msg.message as proto.IMessage | undefined);
   if (!message) {
     return undefined;
@@ -22,6 +22,12 @@ export async function downloadInboundMedia(
     message.documentMessage?.mimetype ??
     message.audioMessage?.mimetype ??
     message.stickerMessage?.mimetype ??
+    undefined;
+  const fileName =
+    message.documentMessage?.fileName?.trim() ||
+    (message as { imageMessage?: { fileName?: string } }).imageMessage?.fileName?.trim() ||
+    (message as { videoMessage?: { fileName?: string } }).videoMessage?.fileName?.trim() ||
+    (message as { audioMessage?: { fileName?: string } }).audioMessage?.fileName?.trim() ||
     undefined;
   if (
     !message.imageMessage &&
@@ -42,7 +48,7 @@ export async function downloadInboundMedia(
         logger: sock.logger,
       },
     );
-    return { buffer, mimetype };
+    return { buffer, mimetype, fileName };
   } catch (err) {
     logVerbose(`downloadMediaMessage failed: ${String(err)}`);
     return undefined;

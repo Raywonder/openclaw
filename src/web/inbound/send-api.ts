@@ -40,7 +40,7 @@ export function createWebSendApi(params: {
         } else {
           payload = {
             document: mediaBuffer,
-            fileName: "file",
+            fileName: sendOptions?.fileName?.trim() || "file",
             caption: text || undefined,
             mimetype: mediaType,
           };

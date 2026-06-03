@@ -96,6 +96,38 @@ describe("cron cli", () => {
     expect(params?.agentId).toBe("ops");
   });
 
+  it("accepts sub-minute recurring schedules on cron add", async () => {
+    callGatewayFromCli.mockClear();
+
+    const { registerCronCli } = await import("./cron-cli.js");
+    const program = new Command();
+    program.exitOverride();
+    registerCronCli(program);
+
+    await program.parseAsync(
+      [
+        "cron",
+        "add",
+        "--name",
+        "Fast health tick",
+        "--every",
+        "10s",
+        "--session",
+        "main",
+        "--system-event",
+        "Check quiet gateway health.",
+      ],
+      { from: "user" },
+    );
+
+    const addCall = callGatewayFromCli.mock.calls.find((call) => call[0] === "cron.add");
+    const params = addCall?.[2] as {
+      schedule?: { kind?: string; everyMs?: number };
+    };
+
+    expect(params?.schedule).toEqual({ kind: "every", everyMs: 10_000 });
+  });
+
   it("omits empty model and thinking on cron edit", async () => {
     callGatewayFromCli.mockClear();
 

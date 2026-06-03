@@ -183,6 +183,7 @@ SCHEDULE TYPES (schedule.kind):
   { "kind": "at", "atMs": <unix-ms-timestamp> }
 - "every": Recurring interval
   { "kind": "every", "everyMs": <interval-ms>, "anchorMs": <optional-start-ms> }
+  Supports sub-minute agent/heartbeat ticks such as 10000 (10 seconds), 30000 (30 seconds), and 60000 (1 minute).
 - "cron": Cron expression
   { "kind": "cron", "expr": "<cron-expression>", "tz": "<optional-timezone>" }
 

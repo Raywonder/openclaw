@@ -119,7 +119,7 @@ export function registerCronAddCommand(cron: Command) {
             if (every) {
               const everyMs = parseDurationMs(every);
               if (!everyMs) {
-                throw new Error("Invalid --every; use e.g. 10m, 1h, 1d");
+                throw new Error("Invalid --every; use e.g. 10s, 30s, 10m, 1h, 1d");
               }
               return { kind: "every" as const, everyMs };
             }

@@ -115,6 +115,12 @@ Cron supports three schedule kinds:
 Cron expressions use `croner`. If a timezone is omitted, the Gateway host’s
 local timezone is used.
 
+Fixed interval jobs can be sub-minute. Use `--every 10s`, `--every 30s`, or
+`--every 1m` from the CLI, or pass `everyMs: 10000`, `30000`, or `60000` through
+the Gateway/tool API. Keep 10-second and 30-second jobs quiet and internal unless
+there is an actionable problem; otherwise they will burn model calls and annoy
+people in messaging channels.
+
 ### Main vs isolated execution
 
 #### Main session jobs (system events)

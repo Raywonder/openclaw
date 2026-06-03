@@ -1,4 +1,4 @@
-import type { Client } from "@buape/carbon";
+import type { Client, User } from "@buape/carbon";
 import type { HistoryEntry } from "../../auto-reply/reply/history.js";
 import type { ReplyToMode } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
@@ -18,6 +18,83 @@ type LoadedConfig = ReturnType<typeof import("../../config/config.js").loadConfi
 type DiscordConfig = NonNullable<
   import("../../config/config.js").OpenClawConfig["channels"]
 >["discord"];
+
+function isExplicitDiscordBotMention(params: {
+  event: DiscordMessageEvent;
+  botUserId?: string;
+}): boolean {
+  const { event, botUserId } = params;
+  if (!botUserId) {
+    return false;
+  }
+  const message = event.message;
+  if (!event.guild_id) {
+    return false;
+  }
+  if (message.referencedMessage?.author?.id === botUserId) {
+    return true;
+  }
+  return Boolean(message.mentionedUsers?.some((user: User) => user.id === botUserId));
+}
+
+function mergeMentionUsers(entries: Array<{ data: DiscordMessageEvent }>) {
+  const users = new Map<
+    string,
+    NonNullable<DiscordMessageEvent["message"]["mentionedUsers"]>[number]
+  >();
+  for (const entry of entries) {
+    for (const user of entry.data.message.mentionedUsers ?? []) {
+      users.set(user.id, user);
+    }
+  }
+  return Array.from(users.values());
+}
+
+function mergeMentionRoles(entries: Array<{ data: DiscordMessageEvent }>) {
+  const roles = new Map<
+    string,
+    NonNullable<DiscordMessageEvent["message"]["mentionedRoles"]>[number]
+  >();
+  for (const entry of entries) {
+    for (const role of entry.data.message.mentionedRoles ?? []) {
+      roles.set(role.id, role);
+    }
+  }
+  return Array.from(roles.values());
+}
+
+export function buildDebouncedDiscordMessageEvent(
+  entries: Array<{ data: DiscordMessageEvent }>,
+): DiscordMessageEvent | null {
+  const last = entries.at(-1);
+  if (!last) {
+    return null;
+  }
+  const combinedBaseText = entries
+    .map((entry) => resolveDiscordMessageText(entry.data.message, { includeForwarded: false }))
+    .filter(Boolean)
+    .join("\n");
+  const syntheticMessage = {
+    ...last.data.message,
+    content: combinedBaseText,
+    attachments: [],
+    mentionedEveryone: entries.some((entry) => entry.data.message.mentionedEveryone),
+    mentionedUsers: mergeMentionUsers(entries),
+    mentionedRoles: mergeMentionRoles(entries),
+    referencedMessage:
+      entries.find((entry) => entry.data.message.referencedMessage)?.data.message
+        .referencedMessage ?? last.data.message.referencedMessage,
+    message_snapshots: (last.data.message as { message_snapshots?: unknown }).message_snapshots,
+    messageSnapshots: (last.data.message as { messageSnapshots?: unknown }).messageSnapshots,
+    rawData: {
+      ...(last.data.message as { rawData?: Record<string, unknown> }).rawData,
+    },
+  };
+  return {
+    ...last.data,
+    message: syntheticMessage,
+  };
+}
 
 export function createDiscordMessageHandler(params: {
   cfg: LoadedConfig;
@@ -67,6 +144,9 @@ export function createDiscordMessageHandler(params: {
       if (!baseText.trim()) {
         return false;
       }
+      if (isExplicitDiscordBotMention({ event: entry.data, botUserId: params.botUserId })) {
+        return false;
+      }
       return !hasControlCommand(baseText, params.cfg);
     },
     onFlush: async (entries) => {
@@ -88,24 +168,10 @@ export function createDiscordMessageHandler(params: {
         await processDiscordMessage(ctx);
         return;
       }
-      const combinedBaseText = entries
-        .map((entry) => resolveDiscordMessageText(entry.data.message, { includeForwarded: false }))
-        .filter(Boolean)
-        .join("\n");
-      const syntheticMessage = {
-        ...last.data.message,
-        content: combinedBaseText,
-        attachments: [],
-        message_snapshots: (last.data.message as { message_snapshots?: unknown }).message_snapshots,
-        messageSnapshots: (last.data.message as { messageSnapshots?: unknown }).messageSnapshots,
-        rawData: {
-          ...(last.data.message as { rawData?: Record<string, unknown> }).rawData,
-        },
-      };
-      const syntheticData: DiscordMessageEvent = {
-        ...last.data,
-        message: syntheticMessage,
-      };
+      const syntheticData = buildDebouncedDiscordMessageEvent(entries);
+      if (!syntheticData) {
+        return;
+      }
       const ctx = await preflightDiscordMessage({
         ...params,
         ackReactionScope,

@@ -266,6 +266,7 @@ export async function monitorWebInbox(options: {
             inboundMedia.mimetype,
             "inbound",
             maxBytes,
+            inboundMedia.fileName,
           );
           mediaPath = saved.path;
           mediaType = inboundMedia.mimetype;

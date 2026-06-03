@@ -57,6 +57,7 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - Don't run destructive commands without asking.
 - `trash` > `rm` (recoverable beats gone forever)
 - When in doubt, ask.
+- Before creating or changing any communication channel, provider account, webhook, bot, SMS number, email address, client portal item, or automation, read applicable global governance first. Prefer service-owned identities, document ownership/provider dependencies, never hardcode secrets, make webhooks traceable, and report what changed.
 
 ## External vs Internal
 
@@ -244,4 +245,3 @@ Minimum review checklist:
 Default rule:
 - Prefer first-party docs and in-app docs over GitHub README links for end
   users whenever those docs exist.
-

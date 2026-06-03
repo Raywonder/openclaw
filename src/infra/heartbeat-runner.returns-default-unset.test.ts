@@ -63,6 +63,16 @@ describe("resolveHeartbeatIntervalMs", () => {
   it("parses duration strings with minute defaults", () => {
     expect(
       resolveHeartbeatIntervalMs({
+        agents: { defaults: { heartbeat: { every: "10s" } } },
+      }),
+    ).toBe(10_000);
+    expect(
+      resolveHeartbeatIntervalMs({
+        agents: { defaults: { heartbeat: { every: "30s" } } },
+      }),
+    ).toBe(30_000);
+    expect(
+      resolveHeartbeatIntervalMs({
         agents: { defaults: { heartbeat: { every: "5m" } } },
       }),
     ).toBe(5 * 60_000);
