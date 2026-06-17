@@ -516,6 +516,28 @@ For groups, use `channels.whatsapp.groupPolicy` + `channels.whatsapp.groupAllowF
 }
 ```
 
+### `channels.whatsapp.directAgentHandles`
+
+Routes explicit handles in direct WhatsApp chats to named agents before the normal default-agent fallback. This only applies after the DM passes `dmPolicy`/allowlist/pairing checks. Group chats still use the normal group mention and activation rules.
+
+Default handles are `@codex`, `@macmini`, and `@cd`. Configure a map when the local agent ids differ or when you want additional handles:
+
+```json5
+{
+  channels: {
+    whatsapp: {
+      directAgentHandles: {
+        "@codex": "codex",
+        "@macmini": "macmini",
+        "@cd": "codex",
+      },
+    },
+  },
+}
+```
+
+Per-account override: `channels.whatsapp.accounts.<id>.directAgentHandles`.
+
 ### `channels.whatsapp.sendReadReceipts`
 
 Controls whether inbound WhatsApp messages are marked as read (blue ticks). Default: `true`.

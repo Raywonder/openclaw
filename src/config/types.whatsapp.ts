@@ -53,6 +53,11 @@ export type WhatsAppConfig = {
   dmHistoryLimit?: number;
   /** Per-DM config overrides keyed by user ID. */
   dms?: Record<string, DmConfig>;
+  /**
+   * Direct-message handles that route a message to a specific agent id.
+   * Keys may include or omit "@"; matching is case-insensitive.
+   */
+  directAgentHandles?: Record<string, string>;
   /** Outbound text chunk size (chars). Default: 4000. */
   textChunkLimit?: number;
   /** Chunking mode: "length" (default) splits by size; "newline" splits on every newline. */
@@ -124,6 +129,11 @@ export type WhatsAppAccountConfig = {
   dmHistoryLimit?: number;
   /** Per-DM config overrides keyed by user ID. */
   dms?: Record<string, DmConfig>;
+  /**
+   * Direct-message handles that route a message to a specific agent id.
+   * Keys may include or omit "@"; matching is case-insensitive.
+   */
+  directAgentHandles?: Record<string, string>;
   textChunkLimit?: number;
   /** Chunking mode: "length" (default) splits by size; "newline" splits on every newline. */
   chunkMode?: "length" | "newline";

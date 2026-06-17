@@ -39,4 +39,6 @@ export type WebInboundMessage = {
   mediaType?: string;
   mediaUrl?: string;
   wasMentioned?: boolean;
+  directAgentHandle?: string;
+  directAgentTarget?: string;
 };

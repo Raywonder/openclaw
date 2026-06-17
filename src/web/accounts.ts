@@ -26,6 +26,7 @@ export type ResolvedWhatsAppAccount = {
   blockStreaming?: boolean;
   ackReaction?: WhatsAppAccountConfig["ackReaction"];
   groups?: WhatsAppAccountConfig["groups"];
+  directAgentHandles?: WhatsAppAccountConfig["directAgentHandles"];
   debounceMs?: number;
 };
 
@@ -165,6 +166,7 @@ export function resolveWhatsAppAccount(params: {
     blockStreaming: accountCfg?.blockStreaming ?? rootCfg?.blockStreaming,
     ackReaction: accountCfg?.ackReaction ?? rootCfg?.ackReaction,
     groups: accountCfg?.groups ?? rootCfg?.groups,
+    directAgentHandles: accountCfg?.directAgentHandles ?? rootCfg?.directAgentHandles,
     debounceMs: accountCfg?.debounceMs ?? rootCfg?.debounceMs,
   };
 }

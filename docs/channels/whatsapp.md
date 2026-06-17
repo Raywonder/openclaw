@@ -198,6 +198,30 @@ Pairing is a DM gate for unknown senders:
 **Can multiple people use different OpenClaw instances on one WhatsApp number?**  
 Yes, by routing each sender to a different agent via `bindings` (peer `kind: "dm"`, sender E.164 like `+15551234567`). Replies still come from the **same WhatsApp account**, and direct chats collapse to each agent’s main session, so use **one agent per person**. DM access control (`dmPolicy`/`allowFrom`) is global per WhatsApp account. See [Multi-Agent Routing](/concepts/multi-agent).
 
+**Can a direct message choose a specific agent by handle?**
+Yes. WhatsApp DMs can route to an agent when the message includes a configured handle. Built-in defaults include `@codex`, `@macmini`, and `@cd`. Add or override handles with `channels.whatsapp.directAgentHandles`:
+
+```json5
+{
+  agents: {
+    list: [{ id: "main", default: true }, { id: "codex" }, { id: "macmini" }],
+  },
+  channels: {
+    whatsapp: {
+      directAgentHandles: {
+        "@codex": "codex",
+        "@macmini": "macmini",
+        "@cd": "codex",
+      },
+    },
+  },
+}
+```
+
+This only changes routing after the DM has passed normal WhatsApp access control. Group chats still use the existing mention and activation rules.
+
+For quick queue control in a DM, `queue on` maps to the safe collect mode and `queue off` maps to interrupt mode. The full command form remains `/queue <mode>`.
+
 **Why do you ask for my phone number in the wizard?**  
 The wizard uses it to set your **allowlist/owner** so your own DMs are permitted. It’s not used for auto-sending. If you run on your personal WhatsApp number, use that same number and enable `channels.whatsapp.selfChatMode`.
 
@@ -354,6 +378,7 @@ WhatsApp sends audio as **voice notes** (PTT bubble).
 - `channels.whatsapp.dmPolicy` (DM policy: pairing/allowlist/open/disabled).
 - `channels.whatsapp.selfChatMode` (same-phone setup; bot uses your personal WhatsApp number).
 - `channels.whatsapp.allowFrom` (DM allowlist). WhatsApp uses E.164 phone numbers (no usernames).
+- `channels.whatsapp.directAgentHandles` (direct-message handles such as `@codex` that route to a named agent).
 - `channels.whatsapp.mediaMaxMb` (inbound media save cap).
 - `channels.whatsapp.ackReaction` (auto-reaction on message receipt: `{emoji, direct, group}`).
 - `channels.whatsapp.accounts.<accountId>.*` (per-account settings + optional `authDir`).

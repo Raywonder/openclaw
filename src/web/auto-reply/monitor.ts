@@ -83,6 +83,8 @@ export async function monitorWebChannel(
         mediaMaxMb: account.mediaMaxMb,
         blockStreaming: account.blockStreaming,
         groups: account.groups,
+        directAgentHandles:
+          account.directAgentHandles ?? baseCfg.channels?.whatsapp?.directAgentHandles,
       },
     },
   } satisfies ReturnType<typeof loadConfig>;

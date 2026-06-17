@@ -17,6 +17,48 @@ import { updateLastRouteInBackground } from "./last-route.js";
 import { resolvePeerId } from "./peer.js";
 import { processMessage } from "./process-message.js";
 
+const DEFAULT_DIRECT_AGENT_HANDLES: Record<string, string> = {
+  "@cd": "codex",
+  "@codex": "codex",
+  "@macmini": "macmini",
+};
+
+function normalizeHandleKey(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return "";
+  }
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
+
+function resolveDirectAgentHandle(params: {
+  body: string;
+  configured?: Record<string, string> | undefined;
+}): { handle: string; agentId: string } | null {
+  const handles = new Map<string, string>();
+  for (const [handle, agentId] of Object.entries(DEFAULT_DIRECT_AGENT_HANDLES)) {
+    handles.set(handle, agentId);
+  }
+  for (const [handle, agentId] of Object.entries(params.configured ?? {})) {
+    const key = normalizeHandleKey(handle);
+    const target = agentId.trim();
+    if (key && target) {
+      handles.set(key, target);
+    }
+  }
+
+  const re = /(^|[^\w])@([a-z][a-z0-9_-]{0,63})\b/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(params.body)) !== null) {
+    const handle = normalizeHandleKey(match[2] ?? "");
+    const agentId = handles.get(handle);
+    if (agentId) {
+      return { handle, agentId };
+    }
+  }
+  return null;
+}
+
 export function createWebOnMessageHandler(params: {
   cfg: ReturnType<typeof loadConfig>;
   verbose: boolean;
@@ -68,10 +110,22 @@ export function createWebOnMessageHandler(params: {
   return async (msg: WebInboundMsg) => {
     const conversationId = msg.conversationId ?? msg.from;
     const peerId = resolvePeerId(msg);
+    const directAgent =
+      msg.chatType === "direct"
+        ? resolveDirectAgentHandle({
+            body: msg.body,
+            configured: params.cfg.channels?.whatsapp?.directAgentHandles,
+          })
+        : null;
+    if (directAgent) {
+      msg.directAgentHandle = directAgent.handle;
+      msg.directAgentTarget = directAgent.agentId;
+    }
     const route = resolveAgentRoute({
       cfg: params.cfg,
       channel: "whatsapp",
       accountId: msg.accountId,
+      agentId: directAgent?.agentId,
       peer: {
         kind: msg.chatType === "group" ? "group" : "dm",
         id: peerId,

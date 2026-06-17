@@ -150,6 +150,28 @@ describe("directive parsing", () => {
     expect(res.cleaned).toBe("please now");
   });
 
+  it("matches bare queue on as collect mode", () => {
+    const res = extractQueueDirective("queue on");
+    expect(res.hasDirective).toBe(true);
+    expect(res.queueMode).toBe("collect");
+    expect(res.queueReset).toBe(false);
+    expect(res.cleaned).toBe("");
+  });
+
+  it("matches bare queue off as interrupt mode", () => {
+    const res = extractQueueDirective("queue off");
+    expect(res.hasDirective).toBe(true);
+    expect(res.queueMode).toBe("interrupt");
+    expect(res.queueReset).toBe(false);
+    expect(res.cleaned).toBe("");
+  });
+
+  it("does not treat unrelated bare queue text as a directive", () => {
+    const res = extractQueueDirective("queue these files later");
+    expect(res.hasDirective).toBe(false);
+    expect(res.cleaned).toBe("queue these files later");
+  });
+
   it("preserves spacing when stripping think directives before paths", () => {
     const res = extractThinkDirective("thats not /think high/tmp/hello");
     expect(res.hasDirective).toBe(true);

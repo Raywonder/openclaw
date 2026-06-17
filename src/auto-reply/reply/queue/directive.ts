@@ -165,7 +165,43 @@ export function extractQueueDirective(body?: string): {
   }
   const re = /(?:^|\s)\/queue(?=$|\s|:)/i;
   const match = re.exec(body);
+  const bareMatch = match ? null : /^\s*queue(?=$|\s|:)/i.exec(body);
   if (!match) {
+    if (bareMatch) {
+      const start = bareMatch.index + bareMatch[0].toLowerCase().indexOf("queue");
+      const argsStart = start + "queue".length;
+      const args = body.slice(argsStart);
+      const parsed = parseQueueDirectiveArgs(args);
+      const hasUnrecognizedBareArgs =
+        args.trim().length > 0 &&
+        !parsed.queueMode &&
+        !parsed.queueReset &&
+        !parsed.hasOptions;
+      if (hasUnrecognizedBareArgs) {
+        return {
+          cleaned: body.trim(),
+          hasDirective: false,
+          queueReset: false,
+          hasOptions: false,
+        };
+      }
+      const cleanedRaw = `${body.slice(0, start)} ${body.slice(argsStart + parsed.consumed)}`;
+      const cleaned = cleanedRaw.replace(/\s+/g, " ").trim();
+      return {
+        cleaned,
+        queueMode: parsed.queueMode,
+        queueReset: parsed.queueReset,
+        rawMode: parsed.rawMode,
+        debounceMs: parsed.debounceMs,
+        cap: parsed.cap,
+        dropPolicy: parsed.dropPolicy,
+        rawDebounce: parsed.rawDebounce,
+        rawCap: parsed.rawCap,
+        rawDrop: parsed.rawDrop,
+        hasDirective: true,
+        hasOptions: parsed.hasOptions,
+      };
+    }
     return {
       cleaned: body.trim(),
       hasDirective: false,

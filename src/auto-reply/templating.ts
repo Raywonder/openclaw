@@ -98,6 +98,8 @@ export type MsgContext = {
   /** Provider surface label (e.g. discord, slack). Prefer this over `Provider` when available. */
   Surface?: string;
   WasMentioned?: boolean;
+  DirectAgentHandle?: string;
+  DirectAgentTarget?: string;
   CommandAuthorized?: boolean;
   CommandSource?: "text" | "native";
   CommandTargetSessionKey?: string;

@@ -338,6 +338,8 @@ export async function processMessage(params: {
     ...(params.msg.location ? toLocationContext(params.msg.location) : {}),
     Provider: "whatsapp",
     Surface: "whatsapp",
+    DirectAgentHandle: params.msg.directAgentHandle,
+    DirectAgentTarget: params.msg.directAgentTarget,
     OriginatingChannel: "whatsapp",
     OriginatingTo: params.msg.from,
   });

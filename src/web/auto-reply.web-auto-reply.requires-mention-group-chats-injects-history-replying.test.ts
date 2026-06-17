@@ -526,6 +526,112 @@ describe("web auto-reply", () => {
     expect(payload.OriginatingTo).not.toBe(payload.To);
   });
 
+  it("routes direct WhatsApp handle messages to the requested agent", async () => {
+    const sendMedia = vi.fn();
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const sendComposing = vi.fn();
+    const resolver = vi.fn().mockResolvedValue({ text: "ok" });
+
+    let capturedOnMessage:
+      | ((msg: import("./inbound.js").WebInboundMessage) => Promise<void>)
+      | undefined;
+    const listenerFactory = async (opts: {
+      onMessage: (msg: import("./inbound.js").WebInboundMessage) => Promise<void>;
+    }) => {
+      capturedOnMessage = opts.onMessage;
+      return { close: vi.fn() };
+    };
+
+    setLoadConfigMock(() => ({
+      agents: {
+        list: [{ id: "main", default: true }, { id: "codex" }],
+      },
+      channels: {
+        whatsapp: {
+          allowFrom: ["*"],
+        },
+      },
+    }));
+
+    await monitorWebChannel(false, listenerFactory, false, resolver);
+    expect(capturedOnMessage).toBeDefined();
+
+    await capturedOnMessage?.({
+      body: "@Codex status",
+      from: "+15551234567",
+      conversationId: "+15551234567",
+      chatId: "direct:+15551234567",
+      chatType: "direct",
+      to: "+19998887777",
+      id: "codex-direct",
+      senderE164: "+15551234567",
+      senderName: "Dominique",
+      selfE164: "+19998887777",
+      sendComposing,
+      reply,
+      sendMedia,
+    });
+
+    expect(resolver).toHaveBeenCalledTimes(1);
+    const payload = resolver.mock.calls[0][0];
+    expect(payload.SessionKey).toBe("agent:codex:main");
+    expect(payload.DirectAgentHandle).toBe("@codex");
+    expect(payload.DirectAgentTarget).toBe("codex");
+  });
+
+  it("keeps ordinary direct WhatsApp messages on the normal agent route", async () => {
+    const sendMedia = vi.fn();
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const sendComposing = vi.fn();
+    const resolver = vi.fn().mockResolvedValue({ text: "ok" });
+
+    let capturedOnMessage:
+      | ((msg: import("./inbound.js").WebInboundMessage) => Promise<void>)
+      | undefined;
+    const listenerFactory = async (opts: {
+      onMessage: (msg: import("./inbound.js").WebInboundMessage) => Promise<void>;
+    }) => {
+      capturedOnMessage = opts.onMessage;
+      return { close: vi.fn() };
+    };
+
+    setLoadConfigMock(() => ({
+      agents: {
+        list: [{ id: "main", default: true }, { id: "codex" }],
+      },
+      channels: {
+        whatsapp: {
+          allowFrom: ["*"],
+        },
+      },
+    }));
+
+    await monitorWebChannel(false, listenerFactory, false, resolver);
+    expect(capturedOnMessage).toBeDefined();
+
+    await capturedOnMessage?.({
+      body: "hello Clawdia",
+      from: "+15551234567",
+      conversationId: "+15551234567",
+      chatId: "direct:+15551234567",
+      chatType: "direct",
+      to: "+19998887777",
+      id: "normal-direct",
+      senderE164: "+15551234567",
+      senderName: "Dominique",
+      selfE164: "+19998887777",
+      sendComposing,
+      reply,
+      sendMedia,
+    });
+
+    expect(resolver).toHaveBeenCalledTimes(1);
+    const payload = resolver.mock.calls[0][0];
+    expect(payload.SessionKey).toBe("agent:main:main");
+    expect(payload.DirectAgentHandle).toBeUndefined();
+    expect(payload.DirectAgentTarget).toBeUndefined();
+  });
+
   it("injects rolling direct-chat context including Clawdia replies", async () => {
     const sendMedia = vi.fn();
     const reply = vi.fn().mockResolvedValue(undefined);

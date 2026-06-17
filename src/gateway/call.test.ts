@@ -8,6 +8,7 @@ let lastClientOptions: {
   url?: string;
   token?: string;
   password?: string;
+  scopes?: string[];
   onHelloOk?: () => void | Promise<void>;
   onClose?: (code: number, reason: string) => void;
 } | null = null;
@@ -44,6 +45,7 @@ vi.mock("./client.js", () => ({
       url?: string;
       token?: string;
       password?: string;
+      scopes?: string[];
       onHelloOk?: () => void | Promise<void>;
       onClose?: (code: number, reason: string) => void;
     }) {
@@ -104,6 +106,24 @@ describe("callGateway url resolution", () => {
     await callGateway({ method: "health" });
 
     expect(lastClientOptions?.url).toBe("ws://100.64.0.1:18800");
+  });
+
+  it("requests read and write scopes for generic CLI gateway calls", async () => {
+    loadConfig.mockReturnValue({ gateway: { mode: "local", bind: "tailnet" } });
+    resolveGatewayPort.mockReturnValue(18800);
+    pickPrimaryTailnetIPv4.mockReturnValue("100.64.0.1");
+
+    await callGateway({ method: "channels.status" });
+
+    expect(lastClientOptions?.scopes).toEqual(
+      expect.arrayContaining([
+        "operator.read",
+        "operator.write",
+        "operator.admin",
+        "operator.approvals",
+        "operator.pairing",
+      ]),
+    );
   });
 
   it("uses url override in remote mode even when remote url is missing", async () => {

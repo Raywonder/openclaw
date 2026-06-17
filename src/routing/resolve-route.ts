@@ -21,6 +21,8 @@ export type ResolveAgentRouteInput = {
   cfg: OpenClawConfig;
   channel: string;
   accountId?: string | null;
+  /** Optional explicit agent override, used by channel-level handle routing. */
+  agentId?: string | null;
   peer?: RoutePeer | null;
   /** Parent peer for threads — used for binding inheritance when peer doesn't match directly. */
   parentPeer?: RoutePeer | null;
@@ -44,6 +46,7 @@ export type ResolvedAgentRoute = {
     | "binding.team"
     | "binding.account"
     | "binding.channel"
+    | "override.agent"
     | "default";
 };
 
@@ -207,6 +210,10 @@ export function resolveAgentRoute(input: ResolveAgentRouteInput): ResolvedAgentR
       matchedBy,
     };
   };
+
+  if (input.agentId?.trim()) {
+    return choose(input.agentId, "override.agent");
+  }
 
   if (peer) {
     const peerMatch = bindings.find((b) => matchesPeer(b.match, peer));

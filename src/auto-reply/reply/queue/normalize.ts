@@ -8,6 +8,12 @@ export function normalizeQueueMode(raw?: string): QueueMode | undefined {
   if (cleaned === "queue" || cleaned === "queued") {
     return "steer";
   }
+  if (cleaned === "on" || cleaned === "enabled" || cleaned === "enable") {
+    return "collect";
+  }
+  if (cleaned === "off" || cleaned === "disabled" || cleaned === "disable") {
+    return "interrupt";
+  }
   if (cleaned === "interrupt" || cleaned === "interrupts" || cleaned === "abort") {
     return "interrupt";
   }
