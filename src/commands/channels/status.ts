@@ -10,6 +10,7 @@ import { collectChannelStatusIssues } from "../../infra/channels-status-issues.j
 import { defaultRuntime, type RuntimeEnv } from "../../runtime.js";
 import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
+import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../../utils/message-channel.js";
 import { type ChatChannel, formatChannelAccountLabel, requireValidConfig } from "./shared.js";
 
 export type ChannelsStatusOptions = {
@@ -261,6 +262,9 @@ export async function channelsStatusCommand(
         await callGateway({
           method: "channels.status",
           params: { probe: Boolean(opts.probe), timeoutMs },
+          clientName: GATEWAY_CLIENT_NAMES.CLI,
+          mode: GATEWAY_CLIENT_MODES.CLI,
+          scopes: ["operator.read"],
           timeoutMs,
         }),
     );
