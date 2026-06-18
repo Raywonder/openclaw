@@ -131,6 +131,36 @@ Doctor/service will show runtime state (PID/last exit) and log hints.
 
 See [/logging](/logging) for a full overview of formats, config, and access.
 
+### Windows external drive install hangs or fails on pnpm symlinks
+
+If a Windows checkout lives on an external drive formatted as exFAT, dependency
+installation can hang or fail with symlink or `EISDIR` errors. This is not
+usually an OpenClaw package problem. The package tree uses symlinks heavily, and
+exFAT does not provide the filesystem behavior that pnpm expects.
+
+**Fix options:**
+
+- Use a WSL native checkout, such as `~/git/openclaw`, for `pnpm install`,
+  tests, and local development.
+- Or use an NTFS workspace, including an NTFS-formatted VHD mounted on Windows.
+- Keep exFAT/external-drive folders for source storage or handoff only, not for
+  `node_modules`.
+
+**Quick check:**
+
+```powershell
+Get-Volume -DriveLetter E | Select-Object DriveLetter, FileSystem
+```
+
+If the filesystem is `exFAT`, do not spend time reinstalling pnpm or clearing
+the package store first. Move the active install/test workspace to WSL or NTFS,
+then retry:
+
+```bash
+corepack pnpm@latest install --ignore-scripts
+corepack pnpm@latest test
+```
+
 ### "Gateway start blocked: set gateway.mode=local"
 
 This means the config exists but `gateway.mode` is unset (or not `local`), so the
