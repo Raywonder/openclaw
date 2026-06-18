@@ -3,6 +3,7 @@ import type { OpenClawConfig } from "../../config/config.js";
 import type { GatewayMessageChannel } from "../../utils/message-channel.js";
 import type { AnyAgentTool } from "./common.js";
 import { loadConfig } from "../../config/config.js";
+import { gateUserFacingOutput } from "../../infra/outbound/user-facing-output.js";
 import { textToSpeech } from "../../tts/tts.js";
 import { readStringParam } from "./common.js";
 
@@ -26,10 +27,19 @@ export function createTtsTool(opts?: {
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
       const text = readStringParam(params, "text", { required: true });
+      const gated = gateUserFacingOutput(text);
+      if (gated.blocked || !gated.text.trim()) {
+        return {
+          content: [
+            { type: "text", text: "TTS skipped because the text was internal tool output." },
+          ],
+          details: { blocked: true, reason: gated.reason ?? "unsafe-output" },
+        };
+      }
       const channel = readStringParam(params, "channel");
       const cfg = opts?.config ?? loadConfig();
       const result = await textToSpeech({
-        text,
+        text: gated.text,
         cfg,
         channel: channel ?? opts?.agentChannel,
       });

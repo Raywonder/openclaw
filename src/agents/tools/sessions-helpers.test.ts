@@ -17,6 +17,12 @@ describe("sanitizeTextContent", () => {
     const result = sanitizeTextContent(input).trim();
     expect(result).toBe("Before  after");
   });
+
+  it("blocks raw function tool JSON envelopes", () => {
+    const input =
+      '{"type":"function","function":{"name":"tool_call","parameters":{"id":"whatsapp:3364626141:direct:+13364626141"}}}';
+    expect(sanitizeTextContent(input)).toBe("");
+  });
 });
 
 describe("extractAssistantText", () => {

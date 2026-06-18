@@ -331,6 +331,50 @@ describe("deliverOutboundPayloads", () => {
     );
   });
 
+  it("does not deliver raw function tool JSON to WhatsApp", async () => {
+    const sendWhatsApp = vi.fn().mockResolvedValue({ messageId: "w1", toJid: "jid" });
+    const cfg: OpenClawConfig = {};
+
+    const results = await deliverOutboundPayloads({
+      cfg,
+      channel: "whatsapp",
+      to: "+1555",
+      payloads: [
+        {
+          text: '{"type":"function","function":{"name":"tool_call","parameters":{"id":"openclaw"}}}',
+        },
+      ],
+      deps: { sendWhatsApp },
+    });
+
+    expect(sendWhatsApp).not.toHaveBeenCalled();
+    expect(results).toEqual([]);
+  });
+
+  it("strips unsafe media captions while keeping the media URL", async () => {
+    const sendWhatsApp = vi.fn().mockResolvedValue({ messageId: "w1", toJid: "jid" });
+    const cfg: OpenClawConfig = {};
+
+    await deliverOutboundPayloads({
+      cfg,
+      channel: "whatsapp",
+      to: "+1555",
+      payloads: [
+        {
+          text: '{"type":"function","function":{"name":"tool_describe","parameters":{"id":"openclaw"}}}',
+          mediaUrl: "https://example.com/audio.wav",
+        },
+      ],
+      deps: { sendWhatsApp },
+    });
+
+    expect(sendWhatsApp).toHaveBeenCalledWith(
+      "+1555",
+      "",
+      expect.objectContaining({ verbose: false, mediaUrl: "https://example.com/audio.wav" }),
+    );
+  });
+
   it("mirrors delivered output when mirror options are provided", async () => {
     const sendTelegram = vi.fn().mockResolvedValue({ messageId: "m1", chatId: "c1" });
     const cfg: OpenClawConfig = {

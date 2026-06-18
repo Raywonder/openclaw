@@ -1,5 +1,6 @@
 import type { OpenClawConfig } from "../../config/config.js";
 import { callGateway } from "../../gateway/call.js";
+import { sanitizeUserFacingOutput } from "../../infra/outbound/user-facing-output.js";
 import { isAcpSessionKey, normalizeMainKey } from "../../routing/session-key.js";
 import { sanitizeUserFacingText } from "../pi-embedded-helpers.js";
 import {
@@ -358,7 +359,10 @@ export function sanitizeTextContent(text: string): string {
   if (!text) {
     return text;
   }
-  return stripThinkingTagsFromText(stripDowngradedToolCallText(stripMinimaxToolCallXml(text)));
+  const stripped = stripThinkingTagsFromText(
+    stripDowngradedToolCallText(stripMinimaxToolCallXml(text)),
+  );
+  return sanitizeUserFacingOutput(stripped);
 }
 
 export function extractAssistantText(message: unknown): string | undefined {

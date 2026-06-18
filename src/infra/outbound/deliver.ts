@@ -24,6 +24,7 @@ import {
 import { markdownToSignalTextChunks, type SignalTextStyleRange } from "../../signal/format.js";
 import { sendMessageSignal } from "../../signal/send.js";
 import { normalizeReplyPayloadsForDelivery } from "./payloads.js";
+import { gateUserFacingOutput } from "./user-facing-output.js";
 
 export type { NormalizedOutboundPayload } from "./payloads.js";
 export { normalizeOutboundPayloads } from "./payloads.js";
@@ -235,6 +236,11 @@ export async function deliverOutboundPayloads(params: {
 
   const sendTextChunks = async (text: string) => {
     throwIfAborted(abortSignal);
+    const gated = gateUserFacingOutput(text);
+    if (gated.blocked || !gated.text.trim()) {
+      return;
+    }
+    text = gated.text;
     if (!handler.chunker || textLimit === undefined) {
       results.push(await handler.sendText(text));
       return;
@@ -283,6 +289,11 @@ export async function deliverOutboundPayloads(params: {
 
   const sendSignalTextChunks = async (text: string) => {
     throwIfAborted(abortSignal);
+    const gated = gateUserFacingOutput(text);
+    if (gated.blocked || !gated.text.trim()) {
+      return;
+    }
+    text = gated.text;
     let signalChunks =
       textLimit === undefined
         ? markdownToSignalTextChunks(text, Number.POSITIVE_INFINITY, {
@@ -300,6 +311,8 @@ export async function deliverOutboundPayloads(params: {
 
   const sendSignalMedia = async (caption: string, mediaUrl: string) => {
     throwIfAborted(abortSignal);
+    const gated = gateUserFacingOutput(caption);
+    caption = gated.blocked ? "" : gated.text;
     const formatted = markdownToSignalTextChunks(caption, Number.POSITIVE_INFINITY, {
       tableMode: signalTableMode,
     })[0] ?? {
@@ -328,7 +341,11 @@ export async function deliverOutboundPayloads(params: {
       throwIfAborted(abortSignal);
       params.onPayload?.(payloadSummary);
       if (handler.sendPayload && payload.channelData) {
-        results.push(await handler.sendPayload(payload));
+        const gated = gateUserFacingOutput(payload.text ?? "");
+        if (gated.blocked) {
+          continue;
+        }
+        results.push(await handler.sendPayload({ ...payload, text: gated.text }));
         continue;
       }
       if (payloadSummary.mediaUrls.length === 0) {
@@ -343,7 +360,8 @@ export async function deliverOutboundPayloads(params: {
       let first = true;
       for (const url of payloadSummary.mediaUrls) {
         throwIfAborted(abortSignal);
-        const caption = first ? payloadSummary.text : "";
+        const gatedCaption = first ? gateUserFacingOutput(payloadSummary.text) : undefined;
+        const caption = first && gatedCaption && !gatedCaption.blocked ? gatedCaption.text : "";
         first = false;
         if (isSignalChannel) {
           results.push(await sendSignalMedia(caption, url));
