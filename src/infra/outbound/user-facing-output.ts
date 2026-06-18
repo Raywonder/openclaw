@@ -20,6 +20,9 @@ const INTERNAL_MARKER_RE =
 const JSON_TOOL_PAYLOAD_RE =
   /^\s*(?:```(?:json)?\s*)?\{[\s\S]*(?:"type"\s*:\s*"function"|"name"\s*:\s*"tool_call"|"name"\s*:\s*"tool_describe"|"id"\s*:\s*"openclaw"|whatsapp:\d+:direct)[\s\S]*\}\s*(?:```)?\s*$/i;
 
+const MIXED_TOOL_JSON_RE =
+  /(?:```(?:json)?[\s\S]*(?:"type"\s*:\s*"function"|"name"\s*:\s*"(?:message|tool_call|tool_describe|session_status|sessions_history)"|"parameters"\s*:\s*\{)[\s\S]*```|Here are the JSON responses for each function call)/i;
+
 const RAW_PROVIDER_NOISE_RE =
   /\b(?:Provider .* cooldown|subscription usage limit|tool ID .* not recognized|live model reply|could not get a live model reply|I couldn't reach the model right now)\b/i;
 
@@ -34,13 +37,14 @@ function stripThinkingTags(text: string): string {
 }
 
 function stripDowngradedToolMarkers(text: string): string {
-  return text
-    .replace(/\[\s*Tool Call:[^\]]*\]/gi, "")
-    .replace(/\[\s*Tool Result:[^\]]*\]/gi, "");
+  return text.replace(/\[\s*Tool Call:[^\]]*\]/gi, "").replace(/\[\s*Tool Result:[^\]]*\]/gi, "");
 }
 
 function normalizedJsonText(text: string): string {
-  return text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
+  return text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "");
 }
 
 function isLikelyJsonObject(text: string): boolean {
@@ -73,6 +77,10 @@ export function gateUserFacingOutput(text: string): UserFacingOutputGateResult {
 
   if (JSON_TOOL_PAYLOAD_RE.test(trimmedOriginal)) {
     return { text: "", blocked: true, reason: "json-tool-payload" };
+  }
+
+  if (MIXED_TOOL_JSON_RE.test(trimmedOriginal)) {
+    return { text: "", blocked: true, reason: "mixed-tool-json-payload" };
   }
 
   if (isLikelyJsonObject(trimmedOriginal) && containsInternalToolKey(trimmedOriginal)) {
