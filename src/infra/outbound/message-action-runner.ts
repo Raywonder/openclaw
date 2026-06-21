@@ -26,6 +26,7 @@ import {
   type GatewayClientName,
 } from "../../utils/message-channel.js";
 import { loadWebMedia } from "../../web/media.js";
+import { readWhatsAppMessagesFromTranscripts } from "../../whatsapp/read-messages.js";
 import {
   listConfiguredMessageChannels,
   resolveMessageChannelSelection,
@@ -109,7 +110,7 @@ export type MessageActionRunResult =
       kind: "action";
       channel: ChannelId;
       action: Exclude<ChannelMessageActionName, "send" | "poll">;
-      handledBy: "plugin" | "dry-run";
+      handledBy: "plugin" | "core" | "dry-run";
       payload: unknown;
       toolResult?: AgentToolResult<unknown>;
       dryRun: boolean;
@@ -871,6 +872,28 @@ async function handlePluginAction(ctx: ResolvedActionContext): Promise<MessageAc
       handledBy: "dry-run",
       payload: { ok: true, dryRun: true, channel, action },
       dryRun: true,
+    };
+  }
+
+  if (channel === "whatsapp" && action === "read") {
+    const to = readStringParam(params, "to", { required: true });
+    const limit = readNumberParam(params, "limit", { integer: true });
+    const handled = await readWhatsAppMessagesFromTranscripts({
+      target: to,
+      accountId: accountId ?? undefined,
+      agentId: input.agentId,
+      limit,
+      before: readStringParam(params, "before"),
+      after: readStringParam(params, "after"),
+    });
+    return {
+      kind: "action",
+      channel,
+      action,
+      handledBy: "core",
+      payload: extractToolPayload(handled),
+      toolResult: handled,
+      dryRun,
     };
   }
 
