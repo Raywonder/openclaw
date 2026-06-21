@@ -24,6 +24,7 @@ const mockLoadConfig = vi.fn().mockReturnValue({
 
 const readAllowFromStoreMock = vi.fn().mockResolvedValue([]);
 const upsertPairingRequestMock = vi.fn().mockResolvedValue({ code: "PAIRCODE", created: true });
+const recordWhatsAppEventMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("../config/config.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../config/config.js")>();
@@ -36,6 +37,10 @@ vi.mock("../config/config.js", async (importOriginal) => {
 vi.mock("../pairing/pairing-store.js", () => ({
   readChannelAllowFromStore: (...args: unknown[]) => readAllowFromStoreMock(...args),
   upsertChannelPairingRequest: (...args: unknown[]) => upsertPairingRequestMock(...args),
+}));
+
+vi.mock("../whatsapp/events.js", () => ({
+  recordWhatsAppEvent: (...args: unknown[]) => recordWhatsAppEventMock(...args),
 }));
 
 vi.mock("./session.js", () => {
@@ -80,6 +85,7 @@ describe("web monitor inbox", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     readAllowFromStoreMock.mockResolvedValue([]);
+    recordWhatsAppEventMock.mockClear();
     upsertPairingRequestMock.mockResolvedValue({
       code: "PAIRCODE",
       created: true,
@@ -140,6 +146,75 @@ describe("web monitor inbox", () => {
     expect(sock.sendMessage).toHaveBeenCalledWith("999@s.whatsapp.net", {
       text: "pong",
     });
+
+    await listener.close();
+  });
+
+  it("records WhatsApp edit/delete and group management events without dispatching messages", async () => {
+    const onMessage = vi.fn(async () => {
+      return;
+    });
+
+    const listener = await monitorWebInbox({
+      verbose: false,
+      onMessage,
+      accountId: ACCOUNT_ID,
+      authDir,
+    });
+    const sock = await createWaSocket();
+
+    sock.ev.emit("messages.update", [
+      {
+        key: { id: "abc", remoteJid: "999@s.whatsapp.net" },
+        update: {
+          message: {
+            protocolMessage: {
+              type: 14,
+              key: { id: "abc", remoteJid: "999@s.whatsapp.net" },
+              editedMessage: { conversation: "edited text" },
+            },
+          },
+        },
+      },
+    ]);
+    sock.ev.emit("groups.update", [{ id: "123@g.us", subject: "New Subject" }]);
+    sock.ev.emit("group-participants.update", {
+      id: "123@g.us",
+      participants: ["111@s.whatsapp.net"],
+      action: "add",
+      author: "222@s.whatsapp.net",
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(onMessage).not.toHaveBeenCalled();
+    expect(recordWhatsAppEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: ACCOUNT_ID,
+        chatId: "999@s.whatsapp.net",
+        chatType: "direct",
+        eventType: "message_edited",
+        text: "Message edited: edited text",
+      }),
+    );
+    expect(recordWhatsAppEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: "123@g.us",
+        chatType: "group",
+        eventType: "group_updated",
+        text: 'Group updated: subject changed to "New Subject"',
+      }),
+    );
+    expect(recordWhatsAppEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: "123@g.us",
+        chatType: "group",
+        eventType: "group_participants_updated",
+        actor: "+222",
+        targets: ["+111"],
+        text: "Group participants add: +111",
+      }),
+    );
 
     await listener.close();
   });

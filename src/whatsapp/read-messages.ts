@@ -6,13 +6,20 @@ import {
   resolveDefaultSessionStorePath,
   resolveSessionFilePath,
 } from "../config/sessions.js";
+import {
+  readWhatsAppEvents,
+  resolveWhatsAppEventStorePath,
+  type WhatsAppEventRecord,
+} from "./events.js";
 
 export type WhatsAppReadMessage = {
   id: string;
   timestamp: string;
   authorTag: string;
   text: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
+  kind?: "message" | "event";
+  eventType?: string;
 };
 
 type ReadWhatsAppMessagesParams = {
@@ -23,6 +30,7 @@ type ReadWhatsAppMessagesParams = {
   before?: string | null;
   after?: string | null;
   storePath?: string;
+  eventStorePath?: string;
 };
 
 function jsonResult(details: unknown): AgentToolResult<unknown> {
@@ -71,6 +79,22 @@ function entryMatchesTarget(
   const entryAccount =
     entry.lastAccountId ?? entry.deliveryContext?.accountId ?? entry.origin?.accountId;
   return !entryAccount || entryAccount === normalizedAccount;
+}
+
+function eventMatchesTarget(
+  event: WhatsAppEventRecord,
+  target: string,
+  accountId?: string | null,
+): boolean {
+  const normalizedTarget = normalizeDirectTarget(target);
+  const candidates = [event.conversationId, event.chatId]
+    .map((value) => (typeof value === "string" ? normalizeDirectTarget(value) : ""))
+    .filter(Boolean);
+  if (!candidates.includes(normalizedTarget)) {
+    return false;
+  }
+  const normalizedAccount = accountId?.trim();
+  return !normalizedAccount || event.accountId === normalizedAccount;
 }
 
 function getLineTimestampMs(line: Record<string, unknown>): number {
@@ -162,6 +186,7 @@ function extractTranscriptMessage(line: string): WhatsAppReadMessage | null {
     authorTag: role === "user" ? (senderName ?? "user") : "assistant",
     text,
     role,
+    kind: "message",
   };
 }
 
@@ -202,6 +227,44 @@ function readTranscriptMessages(params: {
   return messages;
 }
 
+function readEventMessages(params: {
+  eventStorePath: string;
+  target: string;
+  accountId?: string | null;
+  beforeMs: number | null;
+  afterMs: number | null;
+}): WhatsAppReadMessage[] {
+  return readWhatsAppEvents({ storePath: params.eventStorePath })
+    .filter((event) => eventMatchesTarget(event, params.target, params.accountId))
+    .filter((event) => {
+      const timestampMs = Date.parse(event.timestamp);
+      if (
+        params.beforeMs !== null &&
+        Number.isFinite(timestampMs) &&
+        timestampMs >= params.beforeMs
+      ) {
+        return false;
+      }
+      if (
+        params.afterMs !== null &&
+        Number.isFinite(timestampMs) &&
+        timestampMs <= params.afterMs
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .map((event) => ({
+      id: event.id,
+      timestamp: event.timestamp,
+      authorTag: "whatsapp",
+      text: event.text,
+      role: "system" as const,
+      kind: "event" as const,
+      eventType: event.eventType,
+    }));
+}
+
 export async function readWhatsAppMessagesFromTranscripts(
   params: ReadWhatsAppMessagesParams,
 ): Promise<AgentToolResult<unknown>> {
@@ -212,6 +275,8 @@ export async function readWhatsAppMessagesFromTranscripts(
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
   const beforeMs = timestampFilter(params.before);
   const afterMs = timestampFilter(params.after);
+  const eventStorePath =
+    params.eventStorePath ?? resolveWhatsAppEventStorePath(params.accountId ?? "default");
   const limit =
     typeof params.limit === "number" && Number.isFinite(params.limit) && params.limit > 0
       ? Math.min(Math.floor(params.limit), 100)
@@ -225,6 +290,15 @@ export async function readWhatsAppMessagesFromTranscripts(
       break;
     }
   }
+  messages.push(
+    ...readEventMessages({
+      eventStorePath,
+      target: params.target,
+      accountId: params.accountId,
+      beforeMs,
+      afterMs,
+    }),
+  );
 
   const latest = messages
     .sort((a, b) => Date.parse(a.timestamp || "0") - Date.parse(b.timestamp || "0"))

@@ -120,4 +120,67 @@ describe("readWhatsAppMessagesFromTranscripts", () => {
 
     expect(result.details).toMatchObject({ ok: true, messages: [] });
   });
+
+  it("includes WhatsApp edit, delete, and group events in readback", async () => {
+    const dir = makeTempDir();
+    const sessionFile = path.join(dir, "session.jsonl");
+    const storePath = path.join(dir, "sessions.json");
+    const eventStorePath = path.join(dir, "events.jsonl");
+    writeJsonl(sessionFile, [
+      {
+        type: "message",
+        id: "m1",
+        timestamp: "2026-06-21T12:00:01.000Z",
+        message: { role: "user", content: "before event" },
+      },
+    ]);
+    writeJsonl(eventStorePath, [
+      {
+        id: "evt1",
+        timestamp: "2026-06-21T12:00:02.000Z",
+        accountId: "acct",
+        chatId: "12345@g.us",
+        conversationId: "12345@g.us",
+        chatType: "group",
+        eventType: "message_edited",
+        text: "Message edited: after event",
+      },
+    ]);
+    fs.writeFileSync(
+      storePath,
+      JSON.stringify({
+        "agent:main:main": {
+          sessionId: "session-1",
+          sessionFile,
+          updatedAt: Date.now(),
+          lastChannel: "whatsapp",
+          groupId: "12345@g.us",
+          lastAccountId: "acct",
+        },
+      }),
+      "utf-8",
+    );
+
+    const result = await readWhatsAppMessagesFromTranscripts({
+      target: "12345@g.us",
+      accountId: "acct",
+      storePath,
+      eventStorePath,
+      limit: 5,
+    });
+
+    expect(result.details).toMatchObject({
+      ok: true,
+      messages: [
+        { id: "m1", kind: "message", text: "before event" },
+        {
+          id: "evt1",
+          kind: "event",
+          role: "system",
+          eventType: "message_edited",
+          text: "Message edited: after event",
+        },
+      ],
+    });
+  });
 });

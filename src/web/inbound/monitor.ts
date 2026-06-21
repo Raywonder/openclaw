@@ -9,6 +9,7 @@ import { getChildLogger } from "../../logging/logger.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { saveMediaBuffer } from "../../media/store.js";
 import { jidToE164, resolveJidToE164 } from "../../utils.js";
+import { recordWhatsAppEvent, type WhatsAppEventType } from "../../whatsapp/events.js";
 import { createWaSocket, getStatusCode, waitForWaConnection } from "../session.js";
 import { checkInboundAccessControl } from "./access-control.js";
 import { isRecentInboundMessage } from "./dedupe.js";
@@ -121,6 +122,31 @@ export async function monitorWebInbox(options: {
 
   const resolveInboundJid = async (jid: string | null | undefined): Promise<string | null> =>
     resolveJidToE164(jid, { authDir: options.authDir, lidLookup });
+
+  const recordEvent = async (event: {
+    chatId: string;
+    chatType: "direct" | "group";
+    eventType: WhatsAppEventType;
+    text: string;
+    conversationId?: string;
+    messageId?: string;
+    actor?: string;
+    targets?: string[];
+  }) => {
+    recordChannelActivity({
+      channel: "whatsapp",
+      accountId: options.accountId,
+      direction: "inbound",
+    });
+    try {
+      await recordWhatsAppEvent({
+        accountId: options.accountId,
+        ...event,
+      });
+    } catch (err) {
+      logVerbose(`Failed to record WhatsApp event: ${String(err)}`);
+    }
+  };
 
   const getGroupMeta = async (jid: string) => {
     const cached = groupMetaCache.get(jid);
@@ -342,6 +368,140 @@ export async function monitorWebInbox(options: {
   };
   sock.ev.on("messages.upsert", handleMessagesUpsert);
 
+  const handleMessagesUpdate = async (
+    updates: Array<{
+      key?: { remoteJid?: string | null; id?: string | null; participant?: string | null };
+      update?: { message?: proto.IMessage | null };
+    }>,
+  ) => {
+    for (const item of updates ?? []) {
+      const remoteJid = item.key?.remoteJid ?? undefined;
+      if (!remoteJid || remoteJid.endsWith("@status") || remoteJid.endsWith("@broadcast")) {
+        continue;
+      }
+      const message = item.update?.message as (proto.IMessage & Record<string, unknown>) | null;
+      if (!message) {
+        continue;
+      }
+      const protocol = message.protocolMessage as
+        | (proto.Message.IProtocolMessage & Record<string, unknown>)
+        | null
+        | undefined;
+      const editedMessage = protocol?.editedMessage as proto.IMessage | null | undefined;
+      const protocolType = String(protocol?.type ?? "").toLowerCase();
+      const isEdited =
+        Boolean(editedMessage) ||
+        protocolType === "14" ||
+        protocolType.includes("message_edit") ||
+        protocolType.includes("edit");
+      const isDeleted =
+        protocolType === "0" || protocolType.includes("revoke") || protocolType.includes("delete");
+      if (!isEdited && !isDeleted) {
+        continue;
+      }
+
+      const group = isJidGroup(remoteJid) === true;
+      const conversationId = group
+        ? remoteJid
+        : ((await resolveInboundJid(remoteJid)) ?? remoteJid);
+      const actor = item.key?.participant
+        ? ((await resolveInboundJid(item.key.participant)) ?? item.key.participant)
+        : undefined;
+      const editedText = editedMessage
+        ? (extractText(editedMessage) ?? "").trim() || extractMediaPlaceholder(editedMessage) || ""
+        : "";
+      await recordEvent({
+        chatId: remoteJid,
+        conversationId,
+        chatType: group ? "group" : "direct",
+        eventType: isEdited ? "message_edited" : "message_deleted",
+        messageId: protocol?.key?.id || item.key?.id || undefined,
+        actor,
+        text: isEdited ? `Message edited${editedText ? `: ${editedText}` : ""}` : "Message deleted",
+      });
+    }
+  };
+  sock.ev.on("messages.update", handleMessagesUpdate);
+
+  const handleGroupsUpdate = async (
+    updates: Array<{
+      id?: string;
+      subject?: string | null;
+      desc?: string | null;
+      announce?: boolean;
+      restrict?: boolean;
+    }>,
+  ) => {
+    for (const update of updates ?? []) {
+      const chatId = update.id;
+      if (!chatId) continue;
+      groupMetaCache.delete(chatId);
+      const parts: string[] = [];
+      if (typeof update.subject === "string") {
+        parts.push(`subject changed to "${update.subject}"`);
+      }
+      if (typeof update.desc === "string") {
+        parts.push(update.desc ? "description changed" : "description cleared");
+      }
+      if (typeof update.announce === "boolean") {
+        parts.push(
+          update.announce ? "only admins can send messages" : "all participants can send messages",
+        );
+      }
+      if (typeof update.restrict === "boolean") {
+        parts.push(
+          update.restrict
+            ? "only admins can edit group info"
+            : "all participants can edit group info",
+        );
+      }
+      if (!parts.length) continue;
+      await recordEvent({
+        chatId,
+        conversationId: chatId,
+        chatType: "group",
+        eventType: "group_updated",
+        text: `Group updated: ${parts.join("; ")}`,
+      });
+    }
+  };
+  sock.ev.on("groups.update", handleGroupsUpdate);
+
+  const handleGroupParticipantsUpdate = async (update: {
+    id?: string;
+    participants?: Array<string | { id?: string; jid?: string }>;
+    action?: string;
+    author?: string;
+  }) => {
+    const chatId = update.id;
+    if (!chatId) return;
+    groupMetaCache.delete(chatId);
+    const targets = (
+      await Promise.all(
+        (update.participants ?? []).map(async (participant) => {
+          const jid =
+            typeof participant === "string" ? participant : (participant.id ?? participant.jid);
+          if (!jid) return "";
+          return (await resolveInboundJid(jid)) ?? jid;
+        }),
+      )
+    ).filter(Boolean);
+    const actor = update.author
+      ? ((await resolveInboundJid(update.author)) ?? update.author)
+      : undefined;
+    const action = String(update.action || "changed");
+    await recordEvent({
+      chatId,
+      conversationId: chatId,
+      chatType: "group",
+      eventType: "group_participants_updated",
+      actor,
+      targets,
+      text: `Group participants ${action}${targets.length ? `: ${targets.join(", ")}` : ""}`,
+    });
+  };
+  sock.ev.on("group-participants.update", handleGroupParticipantsUpdate);
+
   const handleConnectionUpdate = (
     update: Partial<import("@whiskeysockets/baileys").ConnectionState>,
   ) => {
@@ -384,9 +544,30 @@ export async function monitorWebInbox(options: {
         ) => void;
         if (typeof ev.off === "function") {
           ev.off("messages.upsert", messagesUpsertHandler);
+          ev.off(
+            "messages.update",
+            handleMessagesUpdate as unknown as (...args: unknown[]) => void,
+          );
+          ev.off("groups.update", handleGroupsUpdate as unknown as (...args: unknown[]) => void);
+          ev.off(
+            "group-participants.update",
+            handleGroupParticipantsUpdate as unknown as (...args: unknown[]) => void,
+          );
           ev.off("connection.update", connectionUpdateHandler);
         } else if (typeof ev.removeListener === "function") {
           ev.removeListener("messages.upsert", messagesUpsertHandler);
+          ev.removeListener(
+            "messages.update",
+            handleMessagesUpdate as unknown as (...args: unknown[]) => void,
+          );
+          ev.removeListener(
+            "groups.update",
+            handleGroupsUpdate as unknown as (...args: unknown[]) => void,
+          );
+          ev.removeListener(
+            "group-participants.update",
+            handleGroupParticipantsUpdate as unknown as (...args: unknown[]) => void,
+          );
           ev.removeListener("connection.update", connectionUpdateHandler);
         }
         sock.ws?.close();
