@@ -35,6 +35,12 @@ export const AgentDefaultsSchema = z
         z
           .object({
             alias: z.string().optional(),
+            agentRuntime: z
+              .object({
+                id: z.string().optional(),
+              })
+              .passthrough()
+              .optional(),
             /** Provider-specific API parameters (e.g., GLM-4.7 thinking mode). */
             params: z.record(z.string(), z.unknown()).optional(),
           })
@@ -45,6 +51,7 @@ export const AgentDefaultsSchema = z
     repoRoot: z.string().optional(),
     skipBootstrap: z.boolean().optional(),
     bootstrapMaxChars: z.number().int().positive().optional(),
+    bootstrapTotalMaxChars: z.number().int().positive().optional(),
     userTimezone: z.string().optional(),
     timeFormat: z.union([z.literal("auto"), z.literal("12"), z.literal("24")]).optional(),
     envelopeTimezone: z.string().optional(),

@@ -84,6 +84,8 @@ export const GroupChatSchema = z
   .object({
     mentionPatterns: z.array(z.string()).optional(),
     historyLimit: z.number().int().positive().optional(),
+    unmentionedInbound: z.enum(["ignore", "room_event", "session"]).optional(),
+    visibleReplies: z.enum(["off", "manual", "automatic"]).optional(),
   })
   .strict()
   .optional();
@@ -447,6 +449,7 @@ export const MediaUnderstandingModelSchema = z
 export const ToolsMediaUnderstandingSchema = z
   .object({
     enabled: z.boolean().optional(),
+    echoTranscript: z.boolean().optional(),
     scope: MediaUnderstandingScopeSchema,
     maxBytes: z.number().int().positive().optional(),
     maxChars: z.number().int().positive().optional(),

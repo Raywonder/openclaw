@@ -10,6 +10,15 @@ import {
 } from "./zod-schema.core.js";
 
 const ToolPolicyBySenderSchema = z.record(z.string(), ToolPolicySchema).optional();
+const MentionPatternsPolicySchema = z.union([
+  z.array(z.string()),
+  z
+    .object({
+      mode: z.enum(["allow", "deny", "default"]).optional(),
+      patterns: z.array(z.string()).optional(),
+    })
+    .strict(),
+]);
 
 export const WhatsAppAccountSchema = z
   .object({
@@ -19,6 +28,8 @@ export const WhatsAppAccountSchema = z
     configWrites: z.boolean().optional(),
     enabled: z.boolean().optional(),
     sendReadReceipts: z.boolean().optional(),
+    responsePrefix: z.string().optional(),
+    mentionPatterns: MentionPatternsPolicySchema.optional(),
     messagePrefix: z.string().optional(),
     /** Override auth directory for this WhatsApp account (Baileys multi-file auth state). */
     authDir: z.string().optional(),
@@ -83,6 +94,8 @@ export const WhatsAppConfigSchema = z
     markdown: MarkdownConfigSchema,
     configWrites: z.boolean().optional(),
     sendReadReceipts: z.boolean().optional(),
+    responsePrefix: z.string().optional(),
+    mentionPatterns: MentionPatternsPolicySchema.optional(),
     dmPolicy: DmPolicySchema.optional().default("pairing"),
     messagePrefix: z.string().optional(),
     selfChatMode: z.boolean().optional(),

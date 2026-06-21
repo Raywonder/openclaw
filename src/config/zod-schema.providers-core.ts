@@ -624,6 +624,10 @@ export const IMessageAccountSchemaBase = z
     remoteHost: z.string().optional(),
     service: z.union([z.literal("imessage"), z.literal("sms"), z.literal("auto")]).optional(),
     region: z.string().optional(),
+    sendReadReceipts: z.boolean().optional(),
+    sendTransport: z
+      .union([z.literal("imsg"), z.literal("messages"), z.literal("auto")])
+      .optional(),
     dmPolicy: DmPolicySchema.optional().default("pairing"),
     allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
     groupAllowFrom: z.array(z.union([z.string(), z.number()])).optional(),
