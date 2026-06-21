@@ -6,6 +6,7 @@ import { createSubsystemLogger } from "../logging/subsystem.js";
 import { convertMarkdownTables } from "../markdown/tables.js";
 import { normalizePollInput, type PollInput } from "../polls.js";
 import { toWhatsappJid } from "../utils.js";
+import { recordWhatsAppContactObservation } from "../whatsapp/contacts.js";
 import { type ActiveWebSendOptions, requireActiveWebListener } from "./active-listener.js";
 import { loadWebMedia } from "./media.js";
 
@@ -102,6 +103,13 @@ export async function sendMessageWhatsApp(
       `Sent message ${messageId} -> ${jid}${options.mediaUrl ? " (media)" : ""} (${durationMs}ms)`,
     );
     logger.info({ jid, messageId }, "sent message");
+    recordWhatsAppContactObservation({
+      accountId: resolvedAccountId ?? options.accountId,
+      jid,
+      e164: to,
+      conversationId: to,
+      direction: "outbound",
+    });
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(
@@ -183,6 +191,13 @@ export async function sendAttachmentWhatsApp(
     const durationMs = Date.now() - startedAt;
     outboundLog.info(`Sent attachment ${messageId} -> ${jid} (${durationMs}ms)`);
     logger.info({ jid, messageId }, "sent attachment");
+    recordWhatsAppContactObservation({
+      accountId: resolvedAccountId ?? options.accountId,
+      jid,
+      e164: to,
+      conversationId: to,
+      direction: "outbound",
+    });
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error({ err: String(err), to }, "failed to send attachment via web session");
@@ -262,6 +277,13 @@ export async function sendPollWhatsApp(
     const durationMs = Date.now() - startedAt;
     outboundLog.info(`Sent poll ${messageId} -> ${jid} (${durationMs}ms)`);
     logger.info({ jid, messageId }, "sent poll");
+    recordWhatsAppContactObservation({
+      accountId: options.accountId,
+      jid,
+      e164: to,
+      conversationId: to,
+      direction: "outbound",
+    });
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(

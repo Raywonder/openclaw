@@ -6,6 +6,7 @@ import {
   resolveDefaultSessionStorePath,
   resolveSessionFilePath,
 } from "../config/sessions.js";
+import { findWhatsAppContactByTarget } from "./contacts.js";
 import {
   readWhatsAppEvents,
   resolveWhatsAppEventStorePath,
@@ -20,6 +21,16 @@ export type WhatsAppReadMessage = {
   role: "user" | "assistant" | "system";
   kind?: "message" | "event";
   eventType?: string;
+  senderE164?: string;
+  senderJid?: string;
+  contactIdentity?: {
+    displayName?: string;
+    e164?: string;
+    jid?: string;
+    inboundCount: number;
+    outboundCount: number;
+    possiblePreviousE164s?: string[];
+  };
   attachments?: Array<{
     type: "media";
     path?: string;
@@ -36,6 +47,7 @@ type ReadWhatsAppMessagesParams = {
   after?: string | null;
   storePath?: string;
   eventStorePath?: string;
+  contactStorePath?: string;
 };
 
 function jsonResult(details: unknown): AgentToolResult<unknown> {
@@ -210,6 +222,12 @@ function extractTranscriptMessage(line: string): WhatsAppReadMessage | null {
       : typeof msg.senderLabel === "string" && msg.senderLabel.trim()
         ? msg.senderLabel.trim()
         : undefined;
+  const senderE164 =
+    readOptionalString(msg, ["senderE164", "SenderE164"]) ??
+    readOptionalString(record, ["senderE164", "SenderE164"]);
+  const senderJid =
+    readOptionalString(msg, ["senderJid", "SenderId", "senderId"]) ??
+    readOptionalString(record, ["senderJid", "SenderId", "senderId"]);
   return {
     id:
       (typeof record.id === "string" && record.id) ||
@@ -220,6 +238,8 @@ function extractTranscriptMessage(line: string): WhatsAppReadMessage | null {
     text,
     role,
     kind: "message",
+    ...(senderE164 ? { senderE164 } : {}),
+    ...(senderJid ? { senderJid } : {}),
     ...(attachments ? { attachments } : {}),
   };
 }
@@ -336,7 +356,34 @@ export async function readWhatsAppMessagesFromTranscripts(
 
   const latest = messages
     .toSorted((a, b) => Date.parse(a.timestamp || "0") - Date.parse(b.timestamp || "0"))
-    .slice(-limit);
+    .slice(-limit)
+    .map((message) => {
+      const target = message.senderE164 ?? message.senderJid;
+      if (message.role !== "user" || !target) {
+        return message;
+      }
+      const contact = findWhatsAppContactByTarget({
+        target,
+        accountId: params.accountId,
+        storePath: params.contactStorePath,
+      });
+      if (!contact) {
+        return message;
+      }
+      return {
+        ...message,
+        contactIdentity: {
+          ...(contact.displayName ? { displayName: contact.displayName } : {}),
+          ...(contact.e164 ? { e164: contact.e164 } : {}),
+          ...(contact.jid ? { jid: contact.jid } : {}),
+          inboundCount: contact.inboundCount,
+          outboundCount: contact.outboundCount,
+          ...(contact.possiblePreviousE164s?.length
+            ? { possiblePreviousE164s: contact.possiblePreviousE164s }
+            : {}),
+        },
+      };
+    });
 
   return jsonResult({
     ok: true,

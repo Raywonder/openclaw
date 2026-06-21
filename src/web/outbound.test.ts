@@ -6,6 +6,9 @@ const loadWebMediaMock = vi.fn();
 vi.mock("./media.js", () => ({
   loadWebMedia: (...args: unknown[]) => loadWebMediaMock(...args),
 }));
+vi.mock("../whatsapp/contacts.js", () => ({
+  recordWhatsAppContactObservation: vi.fn(),
+}));
 
 import {
   sendAttachmentWhatsApp,

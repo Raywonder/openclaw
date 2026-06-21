@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { recordWhatsAppContactObservation } from "./contacts.js";
 import { readWhatsAppMessagesFromTranscripts } from "./read-messages.js";
 
 const tempDirs: string[] = [];
@@ -197,6 +198,73 @@ describe("readWhatsAppMessagesFromTranscripts", () => {
               mimeType: "application/pdf",
             },
           ],
+        },
+      ],
+    });
+  });
+
+  it("includes observed contact identity in readback when known", async () => {
+    const dir = makeTempDir();
+    const sessionFile = path.join(dir, "session.jsonl");
+    const storePath = path.join(dir, "sessions.json");
+    const contactStorePath = path.join(dir, "contacts.json");
+    recordWhatsAppContactObservation({
+      accountId: "acct",
+      e164: "+15551234567",
+      jid: "15551234567@s.whatsapp.net",
+      displayName: "Dom",
+      direction: "inbound",
+      storePath: contactStorePath,
+    });
+    writeJsonl(sessionFile, [
+      {
+        type: "message",
+        id: "m1",
+        timestamp: "2026-06-21T12:00:01.000Z",
+        message: {
+          role: "user",
+          senderName: "Dom",
+          senderE164: "+15551234567",
+          content: "hello",
+          timestamp: Date.parse("2026-06-21T12:00:01.000Z"),
+        },
+      },
+    ]);
+    fs.writeFileSync(
+      storePath,
+      JSON.stringify({
+        "agent:main:main": {
+          sessionId: "session-1",
+          sessionFile,
+          updatedAt: Date.now(),
+          lastChannel: "whatsapp",
+          lastTo: "+15551234567",
+          lastAccountId: "acct",
+        },
+      }),
+      "utf-8",
+    );
+
+    const result = await readWhatsAppMessagesFromTranscripts({
+      target: "+15551234567",
+      accountId: "acct",
+      storePath,
+      contactStorePath,
+    });
+
+    expect(result.details).toMatchObject({
+      ok: true,
+      messages: [
+        {
+          id: "m1",
+          senderE164: "+15551234567",
+          contactIdentity: {
+            displayName: "Dom",
+            e164: "+15551234567",
+            jid: "15551234567@s.whatsapp.net",
+            inboundCount: 1,
+            outboundCount: 0,
+          },
         },
       ],
     });

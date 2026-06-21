@@ -9,6 +9,7 @@ import { getChildLogger } from "../../logging/logger.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { saveMediaBuffer } from "../../media/store.js";
 import { jidToE164, resolveJidToE164 } from "../../utils.js";
+import { recordWhatsAppContactObservation } from "../../whatsapp/contacts.js";
 import { recordWhatsAppEvent, type WhatsAppEventType } from "../../whatsapp/events.js";
 import { createWaSocket, getStatusCode, waitForWaConnection } from "../session.js";
 import { checkInboundAccessControl } from "./access-control.js";
@@ -318,6 +319,16 @@ export async function monitorWebInbox(options: {
       const timestamp = messageTimestampMs;
       const mentionedJids = extractMentionedJids(msg.message as proto.IMessage | undefined);
       const senderName = msg.pushName ?? undefined;
+      recordWhatsAppContactObservation({
+        accountId: access.resolvedAccountId,
+        jid: participantJid ?? remoteJid,
+        e164: senderE164 ?? (group ? undefined : from),
+        displayName: senderName,
+        conversationId: from,
+        chatType: group ? "group" : "direct",
+        direction: "inbound",
+        timestampMs: timestamp,
+      });
 
       inboundLogger.info(
         { from, to: selfE164 ?? "me", body, mediaPath, mediaType, timestamp },
