@@ -7,7 +7,12 @@ vi.mock("./media.js", () => ({
   loadWebMedia: (...args: unknown[]) => loadWebMediaMock(...args),
 }));
 
-import { sendMessageWhatsApp, sendPollWhatsApp, sendReactionWhatsApp } from "./outbound.js";
+import {
+  sendAttachmentWhatsApp,
+  sendMessageWhatsApp,
+  sendPollWhatsApp,
+  sendReactionWhatsApp,
+} from "./outbound.js";
 
 describe("web outbound", () => {
   const sendComposingTo = vi.fn(async () => {});
@@ -132,6 +137,43 @@ describe("web outbound", () => {
     });
     expect(sendMessage).toHaveBeenLastCalledWith("+1555", "doc", buf, "application/pdf", {
       fileName: "file.pdf",
+    });
+  });
+
+  it("sends attachment buffers via active listener", async () => {
+    const buf = Buffer.from("pdf");
+    const result = await sendAttachmentWhatsApp("+1555", {
+      verbose: false,
+      caption: "doc",
+      buffer: buf.toString("base64"),
+      contentType: "application/pdf",
+      fileName: "file.pdf",
+    });
+    expect(result).toEqual({
+      messageId: "msg123",
+      toJid: "1555@s.whatsapp.net",
+    });
+    expect(sendComposingTo).toHaveBeenCalledWith("+1555");
+    expect(sendMessage).toHaveBeenLastCalledWith("+1555", "doc", buf, "application/pdf", {
+      fileName: "file.pdf",
+    });
+  });
+
+  it("sends attachment media URLs via active listener", async () => {
+    const buf = Buffer.from("img");
+    loadWebMediaMock.mockResolvedValueOnce({
+      buffer: buf,
+      contentType: "image/png",
+      kind: "image",
+      fileName: "pic.png",
+    });
+    await sendAttachmentWhatsApp("+1555", {
+      verbose: false,
+      caption: "pic",
+      mediaUrl: "/tmp/pic.png",
+    });
+    expect(sendMessage).toHaveBeenLastCalledWith("+1555", "pic", buf, "image/png", {
+      fileName: "pic.png",
     });
   });
 

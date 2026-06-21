@@ -15,6 +15,7 @@ import {
   readStringArrayParam,
   readStringParam,
 } from "../../agents/tools/common.js";
+import { handleWhatsAppAction } from "../../agents/tools/whatsapp-actions.js";
 import { parseReplyDirectives } from "../../auto-reply/reply/reply-directives.js";
 import { dispatchChannelMessageAction } from "../../channels/plugins/message-actions.js";
 import { extensionForMime } from "../../media/mime.js";
@@ -26,6 +27,7 @@ import {
   type GatewayClientName,
 } from "../../utils/message-channel.js";
 import { loadWebMedia } from "../../web/media.js";
+import { sendAttachmentWhatsApp } from "../../web/outbound.js";
 import { readWhatsAppMessagesFromTranscripts } from "../../whatsapp/read-messages.js";
 import {
   listConfiguredMessageChannels,
@@ -144,6 +146,13 @@ function extractToolPayload(result: AgentToolResult<unknown>): unknown {
     }
   }
   return result.content ?? result;
+}
+
+function actionToolResult(details: unknown): AgentToolResult<unknown> {
+  return {
+    content: [{ type: "text", text: JSON.stringify(details) }],
+    details,
+  };
 }
 
 function applyCrossContextMessageDecoration({
@@ -886,6 +895,63 @@ async function handlePluginAction(ctx: ResolvedActionContext): Promise<MessageAc
       before: readStringParam(params, "before"),
       after: readStringParam(params, "after"),
     });
+    return {
+      kind: "action",
+      channel,
+      action,
+      handledBy: "core",
+      payload: extractToolPayload(handled),
+      toolResult: handled,
+      dryRun,
+    };
+  }
+
+  if (channel === "whatsapp" && action === "react") {
+    const chatJid =
+      readStringParam(params, "chatJid") ??
+      readStringParam(params, "to") ??
+      readStringParam(params, "target");
+    if (!chatJid) {
+      throw new Error("WhatsApp reaction requires a chat target.");
+    }
+    const handled = await handleWhatsAppAction(
+      {
+        ...params,
+        action: "react",
+        chatJid,
+        accountId: accountId ?? params.accountId,
+      },
+      cfg,
+    );
+    return {
+      kind: "action",
+      channel,
+      action,
+      handledBy: "core",
+      payload: extractToolPayload(handled),
+      toolResult: handled,
+      dryRun,
+    };
+  }
+
+  if (channel === "whatsapp" && action === "sendAttachment") {
+    const to = readStringParam(params, "to", { required: true });
+    const caption =
+      readStringParam(params, "caption", { allowEmpty: true }) ??
+      readStringParam(params, "message", { allowEmpty: true }) ??
+      "";
+    const result = await sendAttachmentWhatsApp(to, {
+      verbose: false,
+      caption,
+      mediaUrl: readStringParam(params, "media", { trim: false }) ?? undefined,
+      buffer: readStringParam(params, "buffer", { trim: false }) ?? undefined,
+      contentType:
+        readStringParam(params, "contentType") ?? readStringParam(params, "mimeType") ?? undefined,
+      fileName: readStringParam(params, "filename") ?? readStringParam(params, "name") ?? undefined,
+      gifPlayback: readBooleanParam(params, "gifPlayback") ?? false,
+      accountId: accountId ?? undefined,
+    });
+    const handled = actionToolResult({ ok: true, ...result });
     return {
       kind: "action",
       channel,

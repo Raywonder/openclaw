@@ -369,6 +369,9 @@ export async function resolveMessagingTarget(params: {
       }
       return true;
     }
+    if (params.channel === "whatsapp" && /@(?:g\.us|s\.whatsapp\.net)$/i.test(trimmed)) {
+      return true;
+    }
     if (trimmed.includes("@thread")) {
       return true;
     }

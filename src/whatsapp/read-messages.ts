@@ -20,6 +20,11 @@ export type WhatsAppReadMessage = {
   role: "user" | "assistant" | "system";
   kind?: "message" | "event";
   eventType?: string;
+  attachments?: Array<{
+    type: "media";
+    path?: string;
+    mimeType?: string;
+  }>;
 };
 
 type ReadWhatsAppMessagesParams = {
@@ -144,6 +149,16 @@ function extractTextContent(value: unknown): string {
     .join("\n");
 }
 
+function readOptionalString(record: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
 function extractTranscriptMessage(line: string): WhatsAppReadMessage | null {
   let parsed: unknown;
   try {
@@ -165,7 +180,25 @@ function extractTranscriptMessage(line: string): WhatsAppReadMessage | null {
     return null;
   }
 
-  const text = extractTextContent(msg.content).trim();
+  const mediaPath =
+    readOptionalString(msg, ["mediaPath", "MediaPath"]) ??
+    readOptionalString(record, ["mediaPath", "MediaPath"]);
+  const mediaType =
+    readOptionalString(msg, ["mediaType", "MediaType", "mimeType", "contentType"]) ??
+    readOptionalString(record, ["mediaType", "MediaType", "mimeType", "contentType"]);
+  const attachments =
+    mediaPath || mediaType
+      ? [
+          {
+            type: "media" as const,
+            ...(mediaPath ? { path: mediaPath } : {}),
+            ...(mediaType ? { mimeType: mediaType } : {}),
+          },
+        ]
+      : undefined;
+  const text =
+    extractTextContent(msg.content).trim() ||
+    (attachments ? `<media:${mediaType ?? "attachment"}>` : "");
   if (!text) {
     return null;
   }
@@ -187,6 +220,7 @@ function extractTranscriptMessage(line: string): WhatsAppReadMessage | null {
     text,
     role,
     kind: "message",
+    ...(attachments ? { attachments } : {}),
   };
 }
 
@@ -272,7 +306,7 @@ export async function readWhatsAppMessagesFromTranscripts(
   const store = loadSessionStore(storePath, { skipCache: true });
   const entries = Object.values(store)
     .filter((entry) => entryMatchesTarget(entry, params.target, params.accountId))
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    .toSorted((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
   const beforeMs = timestampFilter(params.before);
   const afterMs = timestampFilter(params.after);
   const eventStorePath =
@@ -301,7 +335,7 @@ export async function readWhatsAppMessagesFromTranscripts(
   );
 
   const latest = messages
-    .sort((a, b) => Date.parse(a.timestamp || "0") - Date.parse(b.timestamp || "0"))
+    .toSorted((a, b) => Date.parse(a.timestamp || "0") - Date.parse(b.timestamp || "0"))
     .slice(-limit);
 
   return jsonResult({

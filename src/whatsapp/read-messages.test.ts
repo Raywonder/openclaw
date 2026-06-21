@@ -121,6 +121,87 @@ describe("readWhatsAppMessagesFromTranscripts", () => {
     expect(result.details).toMatchObject({ ok: true, messages: [] });
   });
 
+  it("includes received media metadata in readback", async () => {
+    const dir = makeTempDir();
+    const sessionFile = path.join(dir, "session.jsonl");
+    const storePath = path.join(dir, "sessions.json");
+    writeJsonl(sessionFile, [
+      {
+        type: "message",
+        id: "m1",
+        timestamp: "2026-06-21T12:00:01.000Z",
+        message: {
+          role: "user",
+          content: "",
+          mediaPath: "/tmp/openclaw-media/photo.jpg",
+          mediaType: "image/jpeg",
+          timestamp: Date.parse("2026-06-21T12:00:01.000Z"),
+        },
+      },
+      {
+        type: "message",
+        id: "m2",
+        timestamp: "2026-06-21T12:00:02.000Z",
+        message: {
+          role: "user",
+          content: "see this",
+          MediaPath: "/tmp/openclaw-media/doc.pdf",
+          MediaType: "application/pdf",
+          timestamp: Date.parse("2026-06-21T12:00:02.000Z"),
+        },
+      },
+    ]);
+    fs.writeFileSync(
+      storePath,
+      JSON.stringify({
+        "agent:main:main": {
+          sessionId: "session-1",
+          sessionFile,
+          updatedAt: Date.now(),
+          lastChannel: "whatsapp",
+          lastTo: "+15551234567",
+          lastAccountId: "acct",
+        },
+      }),
+      "utf-8",
+    );
+
+    const result = await readWhatsAppMessagesFromTranscripts({
+      target: "+15551234567",
+      accountId: "acct",
+      storePath,
+      limit: 5,
+    });
+
+    expect(result.details).toMatchObject({
+      ok: true,
+      messages: [
+        {
+          id: "m1",
+          text: "<media:image/jpeg>",
+          attachments: [
+            {
+              type: "media",
+              path: "/tmp/openclaw-media/photo.jpg",
+              mimeType: "image/jpeg",
+            },
+          ],
+        },
+        {
+          id: "m2",
+          text: "see this",
+          attachments: [
+            {
+              type: "media",
+              path: "/tmp/openclaw-media/doc.pdf",
+              mimeType: "application/pdf",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it("includes WhatsApp edit, delete, and group events in readback", async () => {
     const dir = makeTempDir();
     const sessionFile = path.join(dir, "session.jsonl");
