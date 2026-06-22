@@ -8,7 +8,46 @@ import {
   type ResponsePrefixContext,
 } from "./response-prefix-template.js";
 
-export type NormalizeReplySkipReason = "empty" | "silent" | "heartbeat";
+export type NormalizeReplySkipReason = "empty" | "silent" | "heartbeat" | "unsafe";
+
+const INTERNAL_EVENT_RE =
+  /(?:\btool_call\b|\btool_describe\b|\btool_result\b|\bfunction_call\b|\bsessionUpdate\b|\bprovider cooldown\b|I could not get a live model reply|I couldn't reach the model right now)/i;
+
+function looksLikeInternalJson(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || !(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const serialized = JSON.stringify(parsed);
+    return INTERNAL_EVENT_RE.test(serialized);
+  } catch {
+    return false;
+  }
+}
+
+function isUnsafeUserFacingText(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (looksLikeInternalJson(trimmed)) {
+    return true;
+  }
+  if (INTERNAL_EVENT_RE.test(trimmed)) {
+    const lower = trimmed.toLowerCase();
+    return (
+      lower.includes("tool_call") ||
+      lower.includes("tool_describe") ||
+      lower.includes("function_call") ||
+      lower.includes("sessionupdate") ||
+      lower.includes("i could not get a live model reply") ||
+      lower.includes("i couldn't reach the model right now")
+    );
+  }
+  return false;
+}
 
 export type NormalizeReplyOptions = {
   responsePrefix?: string;
@@ -63,6 +102,13 @@ export function normalizeReplyPayload(
 
   if (text) {
     text = sanitizeUserFacingText(text);
+    if (isUnsafeUserFacingText(text)) {
+      if (!hasMedia && !hasChannelData) {
+        opts.onSkip?.("unsafe");
+        return null;
+      }
+      text = "";
+    }
   }
   if (!text?.trim() && !hasMedia && !hasChannelData) {
     opts.onSkip?.("empty");

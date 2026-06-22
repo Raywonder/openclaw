@@ -10,6 +10,8 @@ describe("runMessageAction WhatsApp core actions", () => {
   const sendMessage = vi.fn(async () => ({ messageId: "attachment-1" }));
   const sendPoll = vi.fn(async () => ({ messageId: "poll-1" }));
   const sendReaction = vi.fn(async () => {});
+  const editMessage = vi.fn(async () => {});
+  const deleteMessage = vi.fn(async () => {});
   const cfg = {
     channels: {
       whatsapp: {
@@ -29,6 +31,8 @@ describe("runMessageAction WhatsApp core actions", () => {
       sendMessage,
       sendPoll,
       sendReaction,
+      editMessage,
+      deleteMessage,
     });
   });
 
@@ -81,5 +85,56 @@ describe("runMessageAction WhatsApp core actions", () => {
     expect(sendMessage).toHaveBeenCalledWith("+15551234567", "doc", buf, "application/pdf", {
       fileName: "file.pdf",
     });
+  });
+
+  it("routes WhatsApp edits through the active web listener without an extension plugin", async () => {
+    const result = await runMessageAction({
+      cfg,
+      action: "edit",
+      params: {
+        channel: "whatsapp",
+        target: "12345@g.us",
+        messageId: "msg-1",
+        message: "corrected",
+      },
+    });
+
+    expect(result.kind).toBe("action");
+    expect(result.handledBy).toBe("core");
+    expect(result.payload).toMatchObject({ ok: true, edited: true, messageId: "msg-1" });
+    expect(editMessage).toHaveBeenCalledWith("12345@g.us", "msg-1", "corrected");
+  });
+
+  it("routes WhatsApp deletes through the active web listener for own messages", async () => {
+    const result = await runMessageAction({
+      cfg,
+      action: "delete",
+      params: {
+        channel: "whatsapp",
+        target: "12345@g.us",
+        messageId: "msg-1",
+      },
+    });
+
+    expect(result.kind).toBe("action");
+    expect(result.handledBy).toBe("core");
+    expect(result.payload).toMatchObject({ ok: true, deleted: true, messageId: "msg-1" });
+    expect(deleteMessage).toHaveBeenCalledWith("12345@g.us", "msg-1");
+  });
+
+  it("refuses WhatsApp deletes that explicitly target someone else's message", async () => {
+    await expect(
+      runMessageAction({
+        cfg,
+        action: "delete",
+        params: {
+          channel: "whatsapp",
+          target: "12345@g.us",
+          messageId: "msg-1",
+          fromMe: false,
+        },
+      }),
+    ).rejects.toThrow(/own messages/);
+    expect(deleteMessage).not.toHaveBeenCalled();
   });
 });

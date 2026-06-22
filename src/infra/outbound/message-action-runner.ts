@@ -27,7 +27,11 @@ import {
   type GatewayClientName,
 } from "../../utils/message-channel.js";
 import { loadWebMedia } from "../../web/media.js";
-import { sendAttachmentWhatsApp } from "../../web/outbound.js";
+import {
+  deleteMessageWhatsApp,
+  editMessageWhatsApp,
+  sendAttachmentWhatsApp,
+} from "../../web/outbound.js";
 import { readWhatsAppMessagesFromTranscripts } from "../../whatsapp/read-messages.js";
 import {
   listConfiguredMessageChannels,
@@ -952,6 +956,65 @@ async function handlePluginAction(ctx: ResolvedActionContext): Promise<MessageAc
       accountId: accountId ?? undefined,
     });
     const handled = actionToolResult({ ok: true, ...result });
+    return {
+      kind: "action",
+      channel,
+      action,
+      handledBy: "core",
+      payload: extractToolPayload(handled),
+      toolResult: handled,
+      dryRun,
+    };
+  }
+
+  if (channel === "whatsapp" && action === "edit") {
+    const chatJid =
+      readStringParam(params, "chatJid") ??
+      readStringParam(params, "to") ??
+      readStringParam(params, "target");
+    if (!chatJid) {
+      throw new Error("WhatsApp edit requires a chat target.");
+    }
+    const messageId = readStringParam(params, "messageId", { required: true });
+    const message =
+      readStringParam(params, "message", { allowEmpty: true }) ??
+      readStringParam(params, "text", { allowEmpty: true }) ??
+      readStringParam(params, "content", { allowEmpty: true }) ??
+      "";
+    await editMessageWhatsApp(chatJid, messageId, message, {
+      verbose: false,
+      accountId: accountId ?? undefined,
+    });
+    const handled = actionToolResult({ ok: true, edited: true, messageId, toJid: chatJid });
+    return {
+      kind: "action",
+      channel,
+      action,
+      handledBy: "core",
+      payload: extractToolPayload(handled),
+      toolResult: handled,
+      dryRun,
+    };
+  }
+
+  if (channel === "whatsapp" && action === "delete") {
+    const chatJid =
+      readStringParam(params, "chatJid") ??
+      readStringParam(params, "to") ??
+      readStringParam(params, "target");
+    if (!chatJid) {
+      throw new Error("WhatsApp delete requires a chat target.");
+    }
+    const fromMe = readBooleanParam(params, "fromMe");
+    if (fromMe === false) {
+      throw new Error("WhatsApp delete can only target the agent's own messages.");
+    }
+    const messageId = readStringParam(params, "messageId", { required: true });
+    await deleteMessageWhatsApp(chatJid, messageId, {
+      verbose: false,
+      accountId: accountId ?? undefined,
+    });
+    const handled = actionToolResult({ ok: true, deleted: true, messageId, toJid: chatJid });
     return {
       kind: "action",
       channel,

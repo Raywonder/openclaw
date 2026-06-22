@@ -1061,6 +1061,7 @@
               "tools/lobster",
               "tools/llm-task",
               "plugin",
+              "plugins/notification-broadcast",
               "plugins/voice-call",
               "plugins/zalouser",
               "tools/exec",

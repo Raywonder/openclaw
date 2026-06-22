@@ -1,0 +1,14 @@
+{
+  "name": "@openclaw/notification-broadcast",
+  "version": "2026.1.30",
+  "description": "OpenClaw notification broadcast and agent routing plugin",
+  "type": "module",
+  "devDependencies": {
+    "openclaw": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -11,6 +11,8 @@ vi.mock("../whatsapp/contacts.js", () => ({
 }));
 
 import {
+  deleteMessageWhatsApp,
+  editMessageWhatsApp,
   sendAttachmentWhatsApp,
   sendMessageWhatsApp,
   sendPollWhatsApp,
@@ -22,6 +24,8 @@ describe("web outbound", () => {
   const sendMessage = vi.fn(async () => ({ messageId: "msg123" }));
   const sendPoll = vi.fn(async () => ({ messageId: "poll123" }));
   const sendReaction = vi.fn(async () => {});
+  const editMessage = vi.fn(async () => {});
+  const deleteMessage = vi.fn(async () => {});
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,6 +34,8 @@ describe("web outbound", () => {
       sendMessage,
       sendPoll,
       sendReaction,
+      editMessage,
+      deleteMessage,
     });
   });
 
@@ -210,5 +216,19 @@ describe("web outbound", () => {
       false,
       undefined,
     );
+  });
+
+  it("edits messages via active listener", async () => {
+    await editMessageWhatsApp("1555@s.whatsapp.net", "msg123", "corrected", {
+      verbose: false,
+    });
+    expect(editMessage).toHaveBeenCalledWith("1555@s.whatsapp.net", "msg123", "corrected");
+  });
+
+  it("deletes own messages via active listener", async () => {
+    await deleteMessageWhatsApp("1555@s.whatsapp.net", "msg123", {
+      verbose: false,
+    });
+    expect(deleteMessage).toHaveBeenCalledWith("1555@s.whatsapp.net", "msg123");
   });
 });

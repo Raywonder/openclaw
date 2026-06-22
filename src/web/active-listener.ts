@@ -24,6 +24,8 @@ export type ActiveWebListener = {
     fromMe: boolean,
     participant?: string,
   ) => Promise<void>;
+  editMessage: (chatJid: string, messageId: string, text: string) => Promise<void>;
+  deleteMessage: (chatJid: string, messageId: string) => Promise<void>;
   sendComposingTo: (to: string) => Promise<void>;
   close?: () => Promise<void>;
 };

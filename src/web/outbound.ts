@@ -246,6 +246,65 @@ export async function sendReactionWhatsApp(
   }
 }
 
+export async function editMessageWhatsApp(
+  chatJid: string,
+  messageId: string,
+  text: string,
+  options: {
+    verbose: boolean;
+    accountId?: string;
+  },
+): Promise<void> {
+  const correlationId = randomUUID();
+  const { listener: active } = requireActiveWebListener(options.accountId);
+  const logger = getChildLogger({
+    module: "web-outbound",
+    correlationId,
+    chatJid,
+    messageId,
+  });
+  try {
+    const jid = toWhatsappJid(chatJid);
+    outboundLog.info(`Editing message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "editing message");
+    await active.editMessage(chatJid, messageId, text);
+    outboundLog.info(`Edited message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "edited message");
+  } catch (err) {
+    logger.error({ err: String(err), chatJid, messageId }, "failed to edit via web session");
+    throw err;
+  }
+}
+
+export async function deleteMessageWhatsApp(
+  chatJid: string,
+  messageId: string,
+  options: {
+    verbose: boolean;
+    accountId?: string;
+  },
+): Promise<void> {
+  const correlationId = randomUUID();
+  const { listener: active } = requireActiveWebListener(options.accountId);
+  const logger = getChildLogger({
+    module: "web-outbound",
+    correlationId,
+    chatJid,
+    messageId,
+  });
+  try {
+    const jid = toWhatsappJid(chatJid);
+    outboundLog.info(`Deleting own message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "deleting own message");
+    await active.deleteMessage(chatJid, messageId);
+    outboundLog.info(`Deleted own message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "deleted own message");
+  } catch (err) {
+    logger.error({ err: String(err), chatJid, messageId }, "failed to delete via web session");
+    throw err;
+  }
+}
+
 export async function sendPollWhatsApp(
   to: string,
   poll: PollInput,

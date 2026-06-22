@@ -21,6 +21,25 @@ describe("createReplyDispatcher", () => {
     expect(deliver).not.toHaveBeenCalled();
   });
 
+  it("drops internal tool JSON before delivery", async () => {
+    const deliver = vi.fn().mockResolvedValue(undefined);
+    const onSkip = vi.fn();
+    const dispatcher = createReplyDispatcher({ deliver, onSkip });
+
+    expect(
+      dispatcher.sendFinalReply({
+        text: JSON.stringify({
+          type: "function",
+          function: { name: "tool_call", parameters: { id: "openclaw" } },
+        }),
+      }),
+    ).toBe(false);
+
+    await dispatcher.waitForIdle();
+    expect(deliver).not.toHaveBeenCalled();
+    expect(onSkip).toHaveBeenCalledWith(expect.any(Object), { kind: "final", reason: "unsafe" });
+  });
+
   it("strips heartbeat tokens and applies responsePrefix", async () => {
     const deliver = vi.fn().mockResolvedValue(undefined);
     const onHeartbeatStrip = vi.fn();
