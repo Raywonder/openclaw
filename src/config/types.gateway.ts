@@ -66,6 +66,10 @@ export type GatewayControlUiConfig = {
   enabled?: boolean;
   /** Optional base path prefix for the Control UI (e.g. "/openclaw"). */
   basePath?: string;
+  /** Optional static Control UI root override. */
+  root?: string;
+  /** Browser origins allowed to connect to the Control UI. */
+  allowedOrigins?: string[];
   /** Allow token-only auth over insecure HTTP (default: false). */
   allowInsecureAuth?: boolean;
   /** DANGEROUS: Disable device identity checks for the Control UI (default: false). */

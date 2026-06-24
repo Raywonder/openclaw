@@ -6,6 +6,7 @@ import type {
 import type { OpenClawConfig } from "../../config/config.js";
 import { getChannelPlugin } from "../../channels/plugins/index.js";
 import { defaultRuntime, type RuntimeEnv } from "../../runtime.js";
+import { resolveWhatsAppContactByName } from "../../whatsapp/contacts.js";
 import { buildDirectoryCacheKey, DirectoryCache } from "./directory-cache.js";
 import { ambiguousTargetError, unknownTargetError } from "./target-errors.js";
 import {
@@ -369,6 +370,9 @@ export async function resolveMessagingTarget(params: {
       }
       return true;
     }
+    if (params.channel === "whatsapp" && /@(?:g\.us|s\.whatsapp\.net)$/i.test(trimmed)) {
+      return true;
+    }
     if (trimmed.includes("@thread")) {
       return true;
     }
@@ -388,6 +392,33 @@ export async function resolveMessagingTarget(params: {
         source: "normalized",
       },
     };
+  }
+  if (params.channel === "whatsapp") {
+    const contactMatch = resolveWhatsAppContactByName({
+      query: raw,
+      accountId: params.accountId,
+    });
+    if (contactMatch.kind === "single") {
+      const contact = contactMatch.contact;
+      const target = contact.e164 ?? contact.jid;
+      if (target) {
+        return {
+          ok: true,
+          target: {
+            to: target,
+            kind: "user",
+            display: contact.displayName ?? stripTargetPrefixes(raw),
+            source: "directory",
+          },
+        };
+      }
+    }
+    if (contactMatch.kind === "ambiguous") {
+      return {
+        ok: false,
+        error: ambiguousTargetError(providerLabel, raw, hint),
+      };
+    }
   }
   const query = stripTargetPrefixes(raw);
   const entries = await getDirectoryEntries({

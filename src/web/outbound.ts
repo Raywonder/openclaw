@@ -6,6 +6,7 @@ import { createSubsystemLogger } from "../logging/subsystem.js";
 import { convertMarkdownTables } from "../markdown/tables.js";
 import { normalizePollInput, type PollInput } from "../polls.js";
 import { toWhatsappJid } from "../utils.js";
+import { recordWhatsAppContactObservation } from "../whatsapp/contacts.js";
 import { type ActiveWebSendOptions, requireActiveWebListener } from "./active-listener.js";
 import { loadWebMedia } from "./media.js";
 
@@ -102,12 +103,104 @@ export async function sendMessageWhatsApp(
       `Sent message ${messageId} -> ${jid}${options.mediaUrl ? " (media)" : ""} (${durationMs}ms)`,
     );
     logger.info({ jid, messageId }, "sent message");
+    recordWhatsAppContactObservation({
+      accountId: resolvedAccountId ?? options.accountId,
+      jid,
+      e164: to,
+      conversationId: to,
+      direction: "outbound",
+    });
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(
       { err: String(err), to, hasMedia: Boolean(options.mediaUrl) },
       "failed to send via web session",
     );
+    throw err;
+  }
+}
+
+export async function sendAttachmentWhatsApp(
+  to: string,
+  options: {
+    verbose: boolean;
+    caption?: string;
+    mediaUrl?: string;
+    buffer?: string;
+    contentType?: string;
+    fileName?: string;
+    gifPlayback?: boolean;
+    accountId?: string;
+  },
+): Promise<{ messageId: string; toJid: string }> {
+  const correlationId = randomUUID();
+  const startedAt = Date.now();
+  const { listener: active, accountId: resolvedAccountId } = requireActiveWebListener(
+    options.accountId,
+  );
+  const cfg = loadConfig();
+  const logger = getChildLogger({
+    module: "web-outbound",
+    correlationId,
+    to,
+  });
+  try {
+    const jid = toWhatsappJid(to);
+    const caption = options.caption ?? "";
+    let mediaBuffer: Buffer | undefined;
+    let mediaType: string | undefined;
+    let mediaFileName = options.fileName;
+    if (options.buffer) {
+      mediaBuffer = Buffer.from(options.buffer, "base64");
+      mediaType = options.contentType ?? "application/octet-stream";
+      if (mediaType === "audio/ogg") {
+        mediaType = "audio/ogg; codecs=opus";
+      }
+    } else if (options.mediaUrl) {
+      const media = await loadWebMedia(
+        options.mediaUrl,
+        resolveWhatsAppOutboundMediaMaxBytes(cfg, resolvedAccountId ?? options.accountId),
+      );
+      mediaBuffer = media.buffer;
+      mediaType = media.contentType;
+      mediaFileName = mediaFileName ?? media.fileName;
+      if (media.kind === "audio" && media.contentType === "audio/ogg") {
+        mediaType = "audio/ogg; codecs=opus";
+      }
+    }
+    if (!mediaBuffer) {
+      throw new Error("WhatsApp attachment send requires a media URL or base64 buffer.");
+    }
+    outboundLog.info(`Sending attachment -> ${jid}`);
+    logger.info({ jid, hasMedia: true }, "sending attachment");
+    await active.sendComposingTo(to);
+    const hasExplicitAccountId = Boolean(options.accountId?.trim());
+    const accountId = hasExplicitAccountId ? resolvedAccountId : undefined;
+    const sendOptions: ActiveWebSendOptions | undefined =
+      options.gifPlayback || accountId || mediaFileName
+        ? {
+            ...(options.gifPlayback ? { gifPlayback: true } : {}),
+            accountId,
+            ...(mediaFileName ? { fileName: mediaFileName } : {}),
+          }
+        : undefined;
+    const result = sendOptions
+      ? await active.sendMessage(to, caption, mediaBuffer, mediaType, sendOptions)
+      : await active.sendMessage(to, caption, mediaBuffer, mediaType);
+    const messageId = (result as { messageId?: string })?.messageId ?? "unknown";
+    const durationMs = Date.now() - startedAt;
+    outboundLog.info(`Sent attachment ${messageId} -> ${jid} (${durationMs}ms)`);
+    logger.info({ jid, messageId }, "sent attachment");
+    recordWhatsAppContactObservation({
+      accountId: resolvedAccountId ?? options.accountId,
+      jid,
+      e164: to,
+      conversationId: to,
+      direction: "outbound",
+    });
+    return { messageId, toJid: jid };
+  } catch (err) {
+    logger.error({ err: String(err), to }, "failed to send attachment via web session");
     throw err;
   }
 }
@@ -153,6 +246,65 @@ export async function sendReactionWhatsApp(
   }
 }
 
+export async function editMessageWhatsApp(
+  chatJid: string,
+  messageId: string,
+  text: string,
+  options: {
+    verbose: boolean;
+    accountId?: string;
+  },
+): Promise<void> {
+  const correlationId = randomUUID();
+  const { listener: active } = requireActiveWebListener(options.accountId);
+  const logger = getChildLogger({
+    module: "web-outbound",
+    correlationId,
+    chatJid,
+    messageId,
+  });
+  try {
+    const jid = toWhatsappJid(chatJid);
+    outboundLog.info(`Editing message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "editing message");
+    await active.editMessage(chatJid, messageId, text);
+    outboundLog.info(`Edited message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "edited message");
+  } catch (err) {
+    logger.error({ err: String(err), chatJid, messageId }, "failed to edit via web session");
+    throw err;
+  }
+}
+
+export async function deleteMessageWhatsApp(
+  chatJid: string,
+  messageId: string,
+  options: {
+    verbose: boolean;
+    accountId?: string;
+  },
+): Promise<void> {
+  const correlationId = randomUUID();
+  const { listener: active } = requireActiveWebListener(options.accountId);
+  const logger = getChildLogger({
+    module: "web-outbound",
+    correlationId,
+    chatJid,
+    messageId,
+  });
+  try {
+    const jid = toWhatsappJid(chatJid);
+    outboundLog.info(`Deleting own message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "deleting own message");
+    await active.deleteMessage(chatJid, messageId);
+    outboundLog.info(`Deleted own message ${messageId} -> ${jid}`);
+    logger.info({ chatJid: jid, messageId }, "deleted own message");
+  } catch (err) {
+    logger.error({ err: String(err), chatJid, messageId }, "failed to delete via web session");
+    throw err;
+  }
+}
+
 export async function sendPollWhatsApp(
   to: string,
   poll: PollInput,
@@ -184,6 +336,13 @@ export async function sendPollWhatsApp(
     const durationMs = Date.now() - startedAt;
     outboundLog.info(`Sent poll ${messageId} -> ${jid} (${durationMs}ms)`);
     logger.info({ jid, messageId }, "sent poll");
+    recordWhatsAppContactObservation({
+      accountId: options.accountId,
+      jid,
+      e164: to,
+      conversationId: to,
+      direction: "outbound",
+    });
     return { messageId, toJid: jid };
   } catch (err) {
     logger.error(

@@ -14,6 +14,13 @@ export type WhatsAppActionConfig = {
   polls?: boolean;
 };
 
+export type WhatsAppMentionPatternsConfig =
+  | string[]
+  | {
+      mode?: "allow" | "deny" | "default";
+      patterns?: string[];
+    };
+
 export type WhatsAppConfig = {
   /** Optional per-account WhatsApp configuration (multi-account). */
   accounts?: Record<string, WhatsAppAccountConfig>;
@@ -25,6 +32,10 @@ export type WhatsAppConfig = {
   configWrites?: boolean;
   /** Send read receipts for incoming messages (default true). */
   sendReadReceipts?: boolean;
+  /** Prefix auto-added to outbound replies for this channel. */
+  responsePrefix?: string;
+  /** Channel-level mention patterns for group activation. */
+  mentionPatterns?: WhatsAppMentionPatternsConfig;
   /**
    * Inbound message prefix (WhatsApp only).
    * Default: `[{agents.list[].identity.name}]` (or `[openclaw]`) when allowFrom is empty, else `""`.
@@ -112,6 +123,10 @@ export type WhatsAppAccountConfig = {
   enabled?: boolean;
   /** Send read receipts for incoming messages (default true). */
   sendReadReceipts?: boolean;
+  /** Prefix auto-added to outbound replies for this account. */
+  responsePrefix?: string;
+  /** Account-level mention patterns for group activation. */
+  mentionPatterns?: WhatsAppMentionPatternsConfig;
   /** Inbound message prefix override for this account (WhatsApp only). */
   messagePrefix?: string;
   /** Override auth directory (Baileys multi-file auth state). */

@@ -4,6 +4,8 @@ import type { TtsConfig } from "./types.tts.js";
 export type GroupChatConfig = {
   mentionPatterns?: string[];
   historyLimit?: number;
+  unmentionedInbound?: "ignore" | "room_event" | "session";
+  visibleReplies?: "off" | "manual" | "automatic";
 };
 
 export type DmConfig = {

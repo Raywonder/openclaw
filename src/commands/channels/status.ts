@@ -264,7 +264,6 @@ export async function channelsStatusCommand(
           params: { probe: Boolean(opts.probe), timeoutMs },
           clientName: GATEWAY_CLIENT_NAMES.CLI,
           mode: GATEWAY_CLIENT_MODES.CLI,
-          scopes: ["operator.read"],
           timeoutMs,
         }),
     );

@@ -29,6 +29,10 @@ export type IMessageAccountConfig = {
   service?: "imessage" | "sms" | "auto";
   /** Optional default region (used when sending SMS). */
   region?: string;
+  /** Send read receipts for incoming messages. */
+  sendReadReceipts?: boolean;
+  /** Default transport used to send outbound messages. */
+  sendTransport?: "imsg" | "messages" | "auto";
   /** Direct message access policy (default: pairing). */
   dmPolicy?: DmPolicy;
   /** Optional allowlist for inbound handles or chat_id targets. */

@@ -351,6 +351,26 @@ describe("deliverOutboundPayloads", () => {
     expect(results).toEqual([]);
   });
 
+  it("does not deliver prose-wrapped tool JSON to WhatsApp", async () => {
+    const sendWhatsApp = vi.fn().mockResolvedValue({ messageId: "w1", toJid: "jid" });
+    const cfg: OpenClawConfig = {};
+
+    const results = await deliverOutboundPayloads({
+      cfg,
+      channel: "whatsapp",
+      to: "+1555",
+      payloads: [
+        {
+          text: 'Here are the JSON responses for each function call:\n\n```json\n{"name":"message","parameters":{"action":"send"}}\n```',
+        },
+      ],
+      deps: { sendWhatsApp },
+    });
+
+    expect(sendWhatsApp).not.toHaveBeenCalled();
+    expect(results).toEqual([]);
+  });
+
   it("strips unsafe media captions while keeping the media URL", async () => {
     const sendWhatsApp = vi.fn().mockResolvedValue({ messageId: "w1", toJid: "jid" });
     const cfg: OpenClawConfig = {};

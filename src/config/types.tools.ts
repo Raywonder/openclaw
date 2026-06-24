@@ -72,6 +72,8 @@ export type MediaUnderstandingModelConfig = {
 export type MediaUnderstandingConfig = {
   /** Enable media understanding when models are configured. */
   enabled?: boolean;
+  /** Echo audio transcripts back to the conversation after transcription. */
+  echoTranscript?: boolean;
   /** Optional scope gating for understanding. */
   scope?: MediaUnderstandingScopeConfig;
   /** Default max bytes to send. */
