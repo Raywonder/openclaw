@@ -33,6 +33,7 @@ export type CallGatewayOptions = {
   clientVersion?: string;
   platform?: string;
   mode?: GatewayClientMode;
+  scopes?: string[];
   instanceId?: string;
   minProtocol?: number;
   maxProtocol?: number;
@@ -216,7 +217,7 @@ export async function callGateway<T = Record<string, unknown>>(
       platform: opts.platform,
       mode: opts.mode ?? GATEWAY_CLIENT_MODES.CLI,
       role: "operator",
-      scopes: [
+      scopes: opts.scopes ?? [
         "operator.read",
         "operator.write",
         "operator.admin",

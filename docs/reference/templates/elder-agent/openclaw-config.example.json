@@ -1,0 +1,28 @@
+{
+  "agents": {
+    "list": [
+      {
+        "id": "elder",
+        "name": "Elder",
+        "workspace": "~/.openclaw/workspace-elder",
+        "agentDir": "~/.openclaw/agents/elder/agent",
+        "identity": {
+          "name": "Elder",
+          "summary": "Governance supervisor for Dominique's agent family"
+        },
+        "tools": {
+          "allow": ["read", "sessions", "gateway"],
+          "deny": ["exec", "write", "edit", "apply_patch", "browser"]
+        },
+        "sandbox": {
+          "mode": "all",
+          "scope": "agent",
+          "workspaceAccess": "none"
+        },
+        "subagents": {
+          "allowAgents": ["clawdia"]
+        }
+      }
+    ]
+  }
+}

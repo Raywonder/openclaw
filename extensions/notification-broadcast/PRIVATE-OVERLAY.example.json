@@ -1,0 +1,43 @@
+{
+  "enabled": true,
+  "sources": {
+    "gateway": { "enabled": true },
+    "windows": { "enabled": false },
+    "macos": { "enabled": false },
+    "pushover": { "enabled": false },
+    "ntfy": { "enabled": false },
+    "email": { "enabled": false },
+    "webhook": { "enabled": false },
+    "server-log": { "enabled": false },
+    "service-monitor": { "enabled": false }
+  },
+  "integrations": {
+    "ntfy": {
+      "enabled": false,
+      "baseUrl": "https://ntfy.example.com",
+      "defaultTopic": "openclaw-alerts",
+      "tokenEnv": "OPENCLAW_NTFY_TOKEN"
+    }
+  },
+  "recipients": [
+    {
+      "id": "owner",
+      "label": "Primary owner",
+      "agentId": "main",
+      "channels": ["private-approved-channel"],
+      "ntfyTopic": "owner-alerts",
+      "minImmediateSeverity": "critical",
+      "digest": true
+    }
+  ],
+  "policies": {
+    "delivery": "digest_plus_urgent",
+    "actionMode": "queue_then_confirm",
+    "urgentSeverity": "critical",
+    "maxDigestItems": 25
+  },
+  "redaction": {
+    "forwardPrivateBodies": false,
+    "deniedFields": ["raw", "secret", "token", "authorization"]
+  }
+}

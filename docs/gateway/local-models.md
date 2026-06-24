@@ -105,6 +105,72 @@ Keep hosted models configured even when running local; use `models.mode: "merge"
 
 Swap the primary and fallback order; keep the same providers block and `models.mode: "merge"` so you can fall back to Sonnet or Opus when the local box is down.
 
+```json5
+{
+  agents: {
+    defaults: {
+      timeoutSeconds: 180,
+      model: {
+        primary: "lmstudio/minimax-m2.1-gs32",
+        fallbacks: ["anthropic/claude-sonnet-4-5", "openai/gpt-5.2"],
+      },
+      models: {
+        "lmstudio/minimax-m2.1-gs32": { alias: "Local MiniMax" },
+        "anthropic/claude-sonnet-4-5": { alias: "Hosted Sonnet" },
+        "openai/gpt-5.2": { alias: "Hosted GPT" },
+      },
+    },
+  },
+  models: {
+    mode: "merge",
+  },
+}
+```
+
+This keeps the online catalog merged into `models.list` and `/model`, but the hosted models only run after the local model fails with a failover-worthy error such as auth, rate limit, billing, or timeout. OpenClaw does not announce intermediate model attempts on messaging channels; the user receives the final answer from the model that succeeds.
+
+### Quiet helper agents with hosted fallback
+
+Use per-agent model overrides when a background or helper agent should use hosted capacity without changing the main local-first default. This is useful for slow local boxes, scheduled jobs, or extra helper agents that should complete quietly while the main agent remains local-first.
+
+```json5
+{
+  agents: {
+    defaults: {
+      model: {
+        primary: "lmstudio/minimax-m2.1-gs32",
+        fallbacks: ["anthropic/claude-sonnet-4-5"],
+      },
+    },
+    list: [
+      {
+        id: "main",
+        default: true,
+      },
+      {
+        id: "summary",
+        model: {
+          primary: "anthropic/claude-sonnet-4-5",
+          fallbacks: ["openai/gpt-5.2", "lmstudio/minimax-m2.1-gs32"],
+        },
+      },
+      {
+        id: "boot-helper",
+        model: {
+          primary: "openai/gpt-5.2",
+          fallbacks: ["anthropic/claude-sonnet-4-5"],
+        },
+      },
+    ],
+  },
+  models: {
+    mode: "merge",
+  },
+}
+```
+
+Per-agent `model.fallbacks` replaces the global fallback list for that agent. Use `fallbacks: []` for a helper that must never leave its primary model.
+
 ### Regional hosting / data routing
 
 - Hosted MiniMax/Kimi/GLM variants also exist on OpenRouter with region-pinned endpoints (e.g., US-hosted). Pick the regional variant there to keep traffic in your chosen jurisdiction while still using `models.mode: "merge"` for Anthropic/OpenAI fallbacks.

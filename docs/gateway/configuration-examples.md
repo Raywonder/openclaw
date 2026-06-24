@@ -572,6 +572,42 @@ Save to `~/.openclaw/openclaw.json` and you can DM the bot from that number.
 }
 ```
 
+### Local-first with online catalog fallback
+
+```json5
+{
+  agents: {
+    defaults: {
+      timeoutSeconds: 180,
+      model: {
+        primary: "lmstudio/minimax-m2.1-gs32",
+        fallbacks: ["anthropic/claude-sonnet-4-5", "openai/gpt-5.2"],
+      },
+      models: {
+        "lmstudio/minimax-m2.1-gs32": { alias: "local" },
+        "anthropic/claude-sonnet-4-5": { alias: "sonnet" },
+        "openai/gpt-5.2": { alias: "gpt" },
+      },
+    },
+    list: [
+      { id: "main", default: true },
+      {
+        id: "summary",
+        model: {
+          primary: "anthropic/claude-sonnet-4-5",
+          fallbacks: ["openai/gpt-5.2", "lmstudio/minimax-m2.1-gs32"],
+        },
+      },
+    ],
+  },
+  models: {
+    mode: "merge",
+  },
+}
+```
+
+The local model stays primary. Hosted models from the online catalog remain selectable and available as quiet fallback candidates when the local model times out or hits another failover-worthy error. The `summary` helper can use hosted capacity first without changing the main agent.
+
 ## Tips
 
 - If you set `dmPolicy: "open"`, the matching `allowFrom` list must include `"*"`.

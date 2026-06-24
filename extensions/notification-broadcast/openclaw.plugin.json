@@ -1,0 +1,14 @@
+{
+  "id": "notification-broadcast",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "sources": { "type": "object" },
+      "recipients": { "type": "array" },
+      "policies": { "type": "object" },
+      "redaction": { "type": "object" }
+    }
+  }
+}
