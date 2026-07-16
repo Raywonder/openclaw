@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveWhatsAppAuthDir } from "./accounts.js";
+import { resolveWhatsAppAccount, resolveWhatsAppAuthDir } from "./accounts.js";
 
 describe("resolveWhatsAppAuthDir", () => {
   const stubCfg = { channels: { whatsapp: { accounts: {} } } } as Parameters<
@@ -43,5 +43,33 @@ describe("resolveWhatsAppAuthDir", () => {
       accountId: "my-account-1",
     });
     expect(authDir).toMatch(/whatsapp[/\\]my-account-1$/);
+  });
+});
+
+describe("resolveWhatsAppAccount", () => {
+  it("syncFullHistory defaults to undefined when not configured", () => {
+    const cfg = { channels: { whatsapp: {} } } as Parameters<
+      typeof resolveWhatsAppAccount
+    >[0]["cfg"];
+    expect(resolveWhatsAppAccount({ cfg }).syncFullHistory).toBeUndefined();
+  });
+
+  it("honors channel-level syncFullHistory", () => {
+    const cfg = { channels: { whatsapp: { syncFullHistory: true } } } as Parameters<
+      typeof resolveWhatsAppAccount
+    >[0]["cfg"];
+    expect(resolveWhatsAppAccount({ cfg }).syncFullHistory).toBe(true);
+  });
+
+  it("lets the account override the channel setting", () => {
+    const cfg = {
+      channels: {
+        whatsapp: {
+          syncFullHistory: true,
+          accounts: { acct1: { syncFullHistory: false } },
+        },
+      },
+    } as Parameters<typeof resolveWhatsAppAccount>[0]["cfg"];
+    expect(resolveWhatsAppAccount({ cfg, accountId: "acct1" }).syncFullHistory).toBe(false);
   });
 });

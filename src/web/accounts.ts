@@ -28,6 +28,7 @@ export type ResolvedWhatsAppAccount = {
   groups?: WhatsAppAccountConfig["groups"];
   directAgentHandles?: WhatsAppAccountConfig["directAgentHandles"];
   debounceMs?: number;
+  syncFullHistory?: boolean;
 };
 
 function listConfiguredAccountIds(cfg: OpenClawConfig): string[] {
@@ -168,6 +169,7 @@ export function resolveWhatsAppAccount(params: {
     groups: accountCfg?.groups ?? rootCfg?.groups,
     directAgentHandles: accountCfg?.directAgentHandles ?? rootCfg?.directAgentHandles,
     debounceMs: accountCfg?.debounceMs ?? rootCfg?.debounceMs,
+    syncFullHistory: accountCfg?.syncFullHistory ?? rootCfg?.syncFullHistory,
   };
 }
 

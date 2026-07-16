@@ -36,11 +36,14 @@ export async function monitorWebInbox(options: {
   debounceMs?: number;
   /** Optional debounce gating predicate. */
   shouldDebounce?: (msg: WebInboundMessage) => boolean;
+  /** Request full message history from the server on connect (default false). */
+  syncFullHistory?: boolean;
 }) {
   const inboundLogger = getChildLogger({ module: "web-inbound" });
   const inboundConsoleLog = createSubsystemLogger("gateway/channels/whatsapp").child("inbound");
   const sock = await createWaSocket(false, options.verbose, {
     authDir: options.authDir,
+    syncFullHistory: options.syncFullHistory,
   });
   await waitForWaConnection(sock);
   const connectedAtMs = Date.now();

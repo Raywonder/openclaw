@@ -39,6 +39,20 @@ describe("web session", () => {
     expect(saveCreds).toHaveBeenCalled();
   });
 
+  it("passes syncFullHistory: false by default", async () => {
+    await createWaSocket(false, false);
+    const makeWASocket = baileys.makeWASocket as ReturnType<typeof vi.fn>;
+    const passed = makeWASocket.mock.calls[0][0];
+    expect(passed).toHaveProperty("syncFullHistory", false);
+  });
+
+  it("passes syncFullHistory: true when opted in", async () => {
+    await createWaSocket(false, false, { syncFullHistory: true });
+    const makeWASocket = baileys.makeWASocket as ReturnType<typeof vi.fn>;
+    const passed = makeWASocket.mock.calls[0][0];
+    expect(passed).toHaveProperty("syncFullHistory", true);
+  });
+
   it("waits for connection open", async () => {
     const ev = new EventEmitter();
     const promise = waitForWaConnection({ ev } as unknown as ReturnType<

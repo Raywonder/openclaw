@@ -108,6 +108,8 @@ export type WhatsAppConfig = {
   debounceMs?: number;
   /** Heartbeat visibility settings for this channel. */
   heartbeat?: ChannelHeartbeatVisibilityConfig;
+  /** Request full message history from the server on connect (default false). */
+  syncFullHistory?: boolean;
 };
 
 export type WhatsAppAccountConfig = {
@@ -183,4 +185,6 @@ export type WhatsAppAccountConfig = {
   debounceMs?: number;
   /** Heartbeat visibility settings for this account. */
   heartbeat?: ChannelHeartbeatVisibilityConfig;
+  /** Request full message history from the server on connect (default false). */
+  syncFullHistory?: boolean;
 };
