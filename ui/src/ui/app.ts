@@ -2,7 +2,11 @@ import { LitElement, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import type { EventLogEntry } from "./app-events";
 import type { DevicePairingList } from "./controllers/devices";
-import type { ExecApprovalRequest } from "./controllers/exec-approval";
+import {
+  parseExecApprovalList,
+  pruneExecApprovalQueue,
+  type ExecApprovalRequest,
+} from "./controllers/exec-approval";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway";
 import type { Tab } from "./navigation";
@@ -147,7 +151,9 @@ export class OpenClawApp extends LitElement {
   @state() execApprovalsTargetNodeId: string | null = null;
   @state() execApprovalQueue: ExecApprovalRequest[] = [];
   @state() execApprovalBusy = false;
+  @state() execApprovalRefreshing = false;
   @state() execApprovalError: string | null = null;
+  @state() execApprovalRefreshStatus = "Waiting for approval updates.";
   @state() pendingGatewayUrl: string | null = null;
 
   @state() configLoading = false;
@@ -415,10 +421,33 @@ export class OpenClawApp extends LitElement {
         decision,
       });
       this.execApprovalQueue = this.execApprovalQueue.filter((entry) => entry.id !== active.id);
+      await this.handleExecApprovalRefresh(true);
     } catch (err) {
       this.execApprovalError = `Exec approval failed: ${String(err)}`;
     } finally {
       this.execApprovalBusy = false;
+    }
+  }
+
+  async handleExecApprovalRefresh(quiet = false) {
+    if (this.execApprovalRefreshing) return;
+    this.execApprovalQueue = pruneExecApprovalQueue(this.execApprovalQueue);
+    if (!this.client || !this.connected) {
+      this.execApprovalRefreshStatus = "Reconnect to refresh approval status.";
+      return;
+    }
+    this.execApprovalRefreshing = true;
+    if (!quiet) this.execApprovalRefreshStatus = "Refreshing approval status…";
+    try {
+      const result = await this.client.request("exec.approval.list");
+      this.execApprovalQueue = parseExecApprovalList(result);
+      this.execApprovalError = null;
+      this.execApprovalRefreshStatus = "Updated just now.";
+    } catch (err) {
+      this.execApprovalRefreshStatus = "Could not refresh approval status. Try again.";
+      this.execApprovalError = `Approval refresh failed: ${String(err)}`;
+    } finally {
+      this.execApprovalRefreshing = false;
     }
   }
 

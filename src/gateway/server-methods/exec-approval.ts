@@ -15,6 +15,9 @@ export function createExecApprovalHandlers(
   opts?: { forwarder?: ExecApprovalForwarder },
 ): GatewayRequestHandlers {
   return {
+    "exec.approval.list": async ({ respond }) => {
+      respond(true, { pending: manager.listSnapshots() }, undefined);
+    },
     "exec.approval.request": async ({ params, respond, context }) => {
       if (!validateExecApprovalRequestParams(params)) {
         respond(

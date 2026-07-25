@@ -69,7 +69,9 @@ export type AppViewState = {
   execApprovalsTargetNodeId: string | null;
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalBusy: boolean;
+  execApprovalRefreshing: boolean;
   execApprovalError: string | null;
+  execApprovalRefreshStatus: string;
   pendingGatewayUrl: string | null;
   configLoading: boolean;
   configRaw: string;
@@ -163,6 +165,7 @@ export type AppViewState = {
   handleNostrProfileImport: () => Promise<void>;
   handleNostrProfileToggleAdvanced: () => void;
   handleExecApprovalDecision: (decision: "allow-once" | "allow-always" | "deny") => Promise<void>;
+  handleExecApprovalRefresh: () => Promise<void>;
   handleGatewayUrlConfirm: () => void;
   handleGatewayUrlCancel: () => void;
   handleConfigLoad: () => Promise<void>;

@@ -49,6 +49,7 @@ type GatewayHost = {
   refreshSessionsAfterChat: Set<string>;
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalError: string | null;
+  execApprovalRefreshStatus: string;
 };
 
 type SessionDefaultsSnapshot = {
@@ -110,6 +111,7 @@ export function connectGateway(host: GatewayHost) {
   host.connected = false;
   host.execApprovalQueue = [];
   host.execApprovalError = null;
+  host.execApprovalRefreshStatus = "Waiting for approval updates.";
 
   host.client?.stop();
   host.client = new GatewayBrowserClient({
@@ -225,6 +227,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     if (entry) {
       host.execApprovalQueue = addExecApproval(host.execApprovalQueue, entry);
       host.execApprovalError = null;
+      host.execApprovalRefreshStatus = "Updated just now.";
       const delay = Math.max(0, entry.expiresAtMs - Date.now() + 500);
       window.setTimeout(() => {
         host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, entry.id);
@@ -237,6 +240,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     const resolved = parseExecApprovalResolved(evt.payload);
     if (resolved) {
       host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
+      host.execApprovalRefreshStatus = "Updated just now.";
     }
   }
 }

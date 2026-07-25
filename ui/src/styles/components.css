@@ -1405,16 +1405,12 @@
    Exec Approval Modal
    =========================================== */
 
-.exec-approval-overlay {
+.exec-approval-surface {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 200;
+  right: 20px;
+  bottom: 20px;
+  width: min(540px, calc(100vw - 40px));
+  z-index: 30;
 }
 
 .exec-approval-card {
@@ -1495,4 +1491,38 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.exec-approval-footer {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.exec-approval-footer > span {
+  flex: 1 1 180px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .exec-approval-surface {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
 }

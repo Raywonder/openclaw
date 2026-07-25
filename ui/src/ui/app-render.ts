@@ -601,7 +601,7 @@ export function renderApp(state: AppViewState) {
             : nothing
         }
       </main>
-      ${renderExecApprovalPrompt(state)}
+      ${state.tab === "chat" ? renderExecApprovalPrompt(state) : nothing}
       ${renderGatewayUrlConfirmation(state)}
     </div>
   `;

@@ -86,3 +86,11 @@ export function removeExecApproval(
 ): ExecApprovalRequest[] {
   return pruneExecApprovalQueue(queue).filter((entry) => entry.id !== id);
 }
+
+export function parseExecApprovalList(payload: unknown): ExecApprovalRequest[] {
+  if (!isRecord(payload) || !Array.isArray(payload.pending)) return [];
+  return payload.pending
+    .map((entry) => parseExecApprovalRequested(entry))
+    .filter((entry): entry is ExecApprovalRequest => entry !== null)
+    .sort((a, b) => a.createdAtMs - b.createdAtMs);
+}

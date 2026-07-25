@@ -1,6 +1,10 @@
 # Repository Guidelines
 
-- Repo: https://github.com/openclaw/openclaw
+- Owner fork: https://github.com/raywonder/openclaw
+- Default all custom OpenClaw development, builds, and node guidance to this owner fork. Do not
+  target, push to, or automatically merge upstream OpenClaw. Upstream may be reviewed and
+  selectively incorporated only with explicit user authorization; preserve the owner fork's
+  stability and accessibility work.
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
 
 ## Project Structure & Module Organization

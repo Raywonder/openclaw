@@ -79,4 +79,12 @@ export class ExecApprovalManager {
     const entry = this.pending.get(recordId);
     return entry?.record ?? null;
   }
+
+  listSnapshots(): ExecApprovalRecord[] {
+    const now = Date.now();
+    return Array.from(this.pending.values())
+      .map((entry) => entry.record)
+      .filter((record) => record.expiresAtMs > now)
+      .sort((a, b) => a.createdAtMs - b.createdAtMs);
+  }
 }

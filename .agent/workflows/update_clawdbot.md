@@ -1,10 +1,12 @@
 ---
-description: Update Clawdbot from upstream when branch has diverged (ahead/behind)
+description: Review upstream only after user authorization when the owner fork has diverged
 ---
 
 # Clawdbot Upstream Sync Workflow
 
-Use this workflow when your fork has diverged from upstream (e.g., "18 commits ahead, 29 commits behind").
+Use this workflow only after the user explicitly authorizes an upstream review or selective
+integration. The owner fork remains the default target; never automatically rebase, merge, or
+push upstream changes into it.
 
 ## Quick Reference
 

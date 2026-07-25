@@ -26,18 +26,11 @@ export function renderExecApprovalPrompt(state: AppViewState) {
   const remaining = remainingMs > 0 ? `expires in ${formatRemaining(remainingMs)}` : "expired";
   const queueCount = state.execApprovalQueue.length;
   return html`
-    <div
-      class="exec-approval-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-live="polite"
-      aria-labelledby=${titleId}
-      aria-describedby=${descriptionId}
-    >
+    <aside class="exec-approval-surface" aria-labelledby=${titleId} aria-describedby=${descriptionId}>
       <div class="exec-approval-card">
         <div class="exec-approval-header">
           <div>
-            <div class="exec-approval-title" id=${titleId}>Exec approval needed</div>
+            <div class="exec-approval-title" id=${titleId}>Approval needed</div>
             <div class="exec-approval-sub" id=${descriptionId}>${remaining}</div>
           </div>
           ${
@@ -84,7 +77,21 @@ export function renderExecApprovalPrompt(state: AppViewState) {
             Deny
           </button>
         </div>
+        <div class="exec-approval-footer">
+          <span class="sr-only" aria-live="polite">${state.execApprovalRefreshStatus}</span>
+          <span aria-hidden="true">${state.execApprovalRefreshStatus}</span>
+          <button
+            class="btn btn--sm"
+            ?disabled=${state.execApprovalRefreshing || state.execApprovalBusy}
+            @click=${() => state.handleExecApprovalRefresh()}
+          >
+            ${state.execApprovalRefreshing ? "Refreshing…" : "Refresh"}
+          </button>
+          <button class="btn btn--sm" @click=${() => state.setTab("nodes")}>
+            Approval preferences
+          </button>
+        </div>
       </div>
-    </div>
+    </aside>
   `;
 }
