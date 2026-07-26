@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { approvedMemoryStatus, prepareApprovedMemoryUpdate } from "./approved-memory.js";
+describe("approved memory boundary", () => { it("accepts concise synthetic summaries but never enables persistence", () => { expect(prepareApprovedMemoryUpdate({ summary: "Synthetic continuity fact.", source: "approved-thread-fallback", provenance: "synthetic" })?.summary).toBe("Synthetic continuity fact."); expect(prepareApprovedMemoryUpdate({ summary: "api_key=secret", source: "approved-journal", provenance: "synthetic" })).toBeNull(); expect(approvedMemoryStatus(false).enabled).toBe(false); }); });
